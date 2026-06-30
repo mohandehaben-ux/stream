@@ -1,0 +1,1257 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | Xtream Panel</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📺</text></svg>">
+    
+    <!-- CSS Libraries -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Tajawal:wght@500;700;800&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=4.1">
+    
+    <!-- JS Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script>
+        if(localStorage.getItem('theme') === 'dark') {
+            document.documentElement.classList.add('dark-mode');
+        }
+    </script>
+</head>
+<body>
+
+    <!-- 1. LOGIN CONTAINER (Carbon Copy) -->
+    <div id="login-container" class="login-container">
+        <div class="top-controls">
+            <button id="darkModeToggleLogin" onclick="toggleDarkMode()"><i class="fa-solid fa-moon"></i></button>
+            <a href="javascript:void(0);">
+                <i class="fa-solid fa-globe me-1"></i> عربي
+            </a>
+        </div>
+        <div class="login-card">
+            <div class="login-header">
+                <i class="fa-solid fa-bolt"></i>
+                <h3>XTREAM PANEL</h3>
+                <p class="text-muted">Reseller Login</p>
+            </div>
+            
+            <form id="loginForm" onsubmit="event.preventDefault()">
+                <div class="input-wrapper">
+                    <i class="fa-solid fa-user input-icon"></i>
+                    <input type="text" id="login-username" class="form-control" placeholder="Username" required="" autocomplete="username">
+                </div>
+
+                <div class="input-wrapper">
+                    <i class="fa-solid fa-lock input-icon"></i>
+                    <input type="password" id="login-password" class="form-control" placeholder="Password" required="" autocomplete="current-password">
+                </div>
+                
+                <button type="submit" id="login-submit-btn" class="btn btn-primary">
+                    LOGIN
+                </button>
+                <p id="login-error" style="color:var(--danger); font-size:0.8rem; margin-top:15px; font-weight:700; text-align:center"></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- 2. SIDEBAR (القائمة الجانبية) -->
+    <div class="sidebar" id="sidebar" style="display:none">
+        <div class="sidebar-header d-flex justify-content-between align-items-center">
+            <h4><i class="fa-solid fa-layer-group me-2"></i> <span>XTREAM</span></h4>
+        </div>
+        
+        <ul class="sidebar-menu">
+            <li>
+                <a href="javascript:void(0);" class="active nav-tab-btn" data-target="tab-dashboard">
+                    <i class="fa-solid fa-gauge"></i> <span>Dashboard (لوحة التحكم)</span>
+                </a>
+            </li>
+
+            <!-- Shared IPTV Store and Management Screens -->
+            <li class="reseller-only" style="display:none">
+                <a href="javascript:void(0);" class="nav-tab-btn" data-target="tab-add-user">
+                    <i class="fa-solid fa-server"></i> <span>Xtream Store (متجر إكس تريم)</span>
+                </a>
+            </li>
+
+            <li class="reseller-only" style="display:none">
+                <a href="javascript:void(0);" class="nav-tab-btn" data-target="tab-reseller-codes">
+                    <i class="fa-solid fa-ticket"></i> <span>Codes Store (متجر الأكواد)</span>
+                </a>
+            </li>
+
+            <li>
+                <a href="javascript:void(0);" class="nav-tab-btn" data-target="tab-manage-users">
+                    <i class="fa-solid fa-users-gear"></i> <span>Manage Users (إدارة المشتركين)</span>
+                </a>
+            </li>
+
+            <li class="reseller-only" style="display:none">
+                <a href="javascript:void(0);" class="nav-tab-btn" data-target="tab-expiring-soon">
+                    <i class="fa-solid fa-clock"></i> <span>Expiring Soon (منتهية قريباً)</span>
+                </a>
+            </li>
+
+            <!-- Admin-Only Operations (Flat design) -->
+            <li class="admin-only" style="display:none">
+                <a href="javascript:void(0);" class="nav-tab-btn" data-target="tab-manage-resellers">
+                    <i class="fa-solid fa-user-tie"></i> <span>Sub-Resellers (الموزعين)</span>
+                </a>
+            </li>
+
+            <li class="admin-only" style="display:none">
+                <a href="javascript:void(0);" class="nav-tab-btn" data-target="tab-admin-panels-services">
+                    <i class="fa-solid fa-sliders"></i> <span>الخوادم والباقات (Servers & Packages)</span>
+                </a>
+            </li>
+            
+            <li class="admin-only" style="display:none">
+                <a href="javascript:void(0);" class="nav-tab-btn" data-target="tab-admin-codes">
+                    <i class="fa-solid fa-barcode"></i> <span>Manage Code Stock (مخزون الأكواد)</span>
+                </a>
+            </li>
+
+            <!-- Settings (Flat design) -->
+            <li>
+                <a href="javascript:void(0);" class="nav-tab-btn" data-target="tab-activity-logs">
+                    <i class="fa-solid fa-list-check"></i> <span>Activity Logs (سجل العمليات)</span>
+                </a>
+            </li>
+            
+            <li>
+                <a href="javascript:void(0);" class="nav-tab-btn" data-target="tab-profile">
+                    <i class="fa-solid fa-user-gear"></i> <span>Profile & Settings (الإعدادات)</span>
+                </a>
+            </li>
+
+            <li><a href="javascript:void(0);" id="btn-logout" class="text-danger mt-4"><i class="fa-solid fa-power-off"></i> <span>Logout (تسجيل الخروج)</span></a></li>
+        </ul>
+    </div>
+
+    <!-- Overlay for mobile sidebar -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeMobileSidebar()"></div>
+
+    <!-- 3. MAIN CONTENT -->
+    <div class="main-content" id="mainContent" style="display:none">
+        
+        <!-- Top Navbar -->
+        <div class="top-navbar">
+            <div class="d-flex align-items-center">
+                <i class="fa-solid fa-bars menu-toggle-btn me-3 d-none d-lg-block" onclick="toggleDesktopSidebar()"></i>
+                <i class="fa-solid fa-bars menu-toggle-btn me-3 d-lg-none" onclick="toggleMobileSidebar()"></i>
+                
+                <h4 class="mb-0 text-brand" id="navbar-title">Dashboard</h4>
+            </div>
+            <div class="text-end d-flex align-items-center gap-3">
+                <button id="darkModeToggle" onclick="toggleDarkMode()">
+                    <i class="fa-solid fa-moon"></i>
+                </button>
+                <span class="fw-bold" id="navbar-credits-display" style="display:none">💰 رصيدك: <strong style="color: #198754;" id="navbar-credits-val">100.00</strong> <small style="color:#198754;opacity:.8">ج.م</small></span>
+                <span class="fw-bold text-primary" id="navbar-username-val">---</span>
+            </div>
+        </div>
+
+        <!-- 📢 Announcement Ticker -->
+        <div class="announcement-ticker">
+            <span class="ticker-label"><i class="fa-solid fa-bullhorn"></i> News</span>
+            <div class="ticker-text-wrap">
+                <div class="ticker-text">Welcome to our panel 2026. Manage subscriptions, devices and logs easily.</div>
+            </div>
+        </div>
+
+        <!-- ==========================================
+             TAB 1: DASHBOARD
+             ========================================== -->
+        <div id="tab-dashboard" class="tab-content">
+            <!-- Dynamic Stats Cards (Admin vs Reseller) -->
+            <div class="stats-container" id="stats-container-dynamic">
+                <!-- Loaded Dynamically via JS -->
+            </div>
+
+
+
+
+        </div>
+
+        <!-- ==========================================
+             TAB 2: ADD USER (Reseller Creates Line / Admin Creates Customer)
+             ========================================== -->
+        <div id="tab-add-user" class="tab-content" style="display:none">
+            <!-- Reseller Add User Form (Create Line) (Carbon Copy) -->
+            <div class="card card-custom" id="reseller-add-user-card" style="display:none">
+                <h3 class="mb-4"><i class="fa-solid fa-server me-2 text-primary"></i> Xtream Store (متجر إكس تريم)</h3>
+                <p class="text-secondary small mb-4">اختر السيرفر الذي ترغب في إنشاء اشتراك إكس تريم منه لعرض الباقات المتوفرة والأسعار.</p>
+                
+                <div class="row" id="reseller-xtream-servers-grid">
+                    <!-- Cards will be populated dynamically -->
+                </div>
+            </div>
+
+            <!-- Admin Add User Form (Create Local Customer) -->
+            <div class="dashboard-section-card" id="admin-add-user-card" style="display:none">
+                <h3>إضافة عميل جديد للنظام 👤</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>اسم المستخدم / الهاتف (Username / Phone)</label>
+                        <input type="text" id="new-username" placeholder="e.g. ahmed_iptv">
+                    </div>
+                    <div class="form-group">
+                        <label>كلمة المرور (Password)</label>
+                        <input type="text" id="new-password" placeholder="Password">
+                    </div>
+                    <div class="form-group">
+                        <label>تاريخ الانتهاء (Expiry Date)</label>
+                        <input type="date" id="new-expire">
+                        <div class="quick-dates" id="quick-dates-container">
+                            <!-- Dynamic Buttons -->
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>ملاحظات (Notes)</label>
+                    <textarea id="new-note" rows="2"></textarea>
+                </div>
+                <button class="btn-primary mt-3" id="save-new-customer">حفظ بيانات العميل 💾</button>
+            </div>
+        </div>
+
+        <!-- ==========================================
+             TAB 3: MANAGE USERS
+             ========================================== -->
+        <div id="tab-manage-users" class="tab-content" style="display:none">
+            <!-- Reseller Subscriptions List -->
+            <div class="dashboard-section-card" id="reseller-manage-users-card" style="display:none">
+                <h3 style="display:flex; justify-content:space-between; align-items:center">
+                    <span>My Created Lines 📋</span>
+                    <span style="font-size:0.8rem; color:var(--text-low-light)" id="reseller-sub-count">Count: 0</span>
+                </h3>
+                <div class="search-bar-container mb-4">
+                    <div class="search-wrapper">
+                        <input type="text" id="reseller-search-input" placeholder="Search lines...">
+                        <div class="search-icon">🔍</div>
+                    </div>
+                </div>
+                <div class="table-wrapper mt-3">
+                    <table class="data-table text-center">
+                        <thead>
+                            <tr>
+                                <th>اسم المستخدم</th>
+                                <th>كلمة المرور</th>
+                                <th>السيرفر</th>
+                                <th>الباقة</th>
+                                <th>تاريخ الانتهاء</th>
+                                <th>المتبقي</th>
+                                <th>الحالة</th>
+                                <th>التحكم</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reseller-customer-list-body">
+                            <!-- Loaded via JS dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Admin Reseller Subscriptions Manager Card -->
+            <div class="dashboard-section-card" id="admin-manage-users-card" style="display:none">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h3 class="mb-0">إدارة اشتراكات الموزعين (Reseller Subscriptions Manager) 👥</h3>
+                    <div class="d-flex gap-2">
+                        <button class="btn-small" id="admin-export-subs-excel"><i class="fa-solid fa-file-export"></i> تصدير إكسل</button>
+                    </div>
+                </div>
+                
+                <div class="search-bar-container mb-4">
+                    <div class="search-wrapper">
+                        <input type="text" id="admin-search-subs-input" placeholder="ابحث باسم المشترك، الموزع، السيرفر، أو كلمة المرور...">
+                        <div class="search-icon">🔍</div>
+                    </div>
+                    
+                    <div class="filter-tabs">
+                        <button class="filter-btn active" id="btn-filter-admin-all">الكل</button>
+                        <button class="filter-btn" id="btn-filter-admin-active">نشط</button>
+                        <button class="filter-btn" id="btn-filter-admin-expired">منتهي</button>
+                    </div>
+                </div>
+
+                <div style="display:flex; justify-content:space-between; margin-bottom:15px; font-size:0.8rem; color:var(--text-low-light)">
+                    <span>عدد الاشتراكات: <span id="admin-subs-count">0</span></span>
+                </div>
+
+                <div class="table-wrapper">
+                    <table class="data-table text-center">
+                        <thead>
+                            <tr>
+                                <th>الموزع</th>
+                                <th>اسم المستخدم</th>
+                                <th>كلمة المرور</th>
+                                <th>السيرفر</th>
+                                <th>الباقة</th>
+                                <th>تاريخ الانتهاء</th>
+                                <th>المتبقي</th>
+                                <th>الحالة</th>
+                                <th>التحكم</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-all-subscriptions-list">
+                            <!-- Loaded via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==========================================
+             TAB 4: EXPIRING SOON
+             ========================================== -->
+        <div id="tab-expiring-soon" class="tab-content" style="display:none">
+            <div class="dashboard-section-card">
+                <h3>Expiring Lines (Next 7 Days) ⚠️</h3>
+                <div id="expiring-users-list" class="customer-list">
+                    <!-- Loaded via JS dynamically -->
+                </div>
+            </div>
+        </div>
+
+        <!-- ==========================================
+             TAB 5: MANAGE RESELLERS
+             ========================================== -->
+        <div id="tab-manage-resellers" class="tab-content" style="display:none">
+            <!-- Top bar with Add Reseller Toggle Button -->
+            <div class="mb-3">
+                <button class="btn-primary" id="btn-show-add-reseller"><i class="fa-solid fa-user-plus me-1"></i> إنشاء حساب موزع جديد 🤝</button>
+            </div>
+            <!-- Add Reseller Modal Overlay -->
+            <div id="add-reseller-modal" class="modal-overlay-card">
+                <div class="modal-card-content dashboard-section-card" style="border-top: 4px solid var(--primary) !important; margin: auto;">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h3 class="mb-0">إنشاء حساب موزع جديد (Create Sub-Reseller) 🤝</h3>
+                        <button type="button" class="btn-close-modal" onclick="document.getElementById('add-reseller-modal').style.display='none'" style="background: none; border: none; font-size: 1.5rem; color: inherit; cursor: pointer;">✕</button>
+                    </div>
+                    <form id="add-reseller-form">
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <label class="form-label">اسم المستخدم (Username) <span class="text-danger">*</span></label>
+                                <input type="text" id="reseller-username" class="form-control" placeholder="Enter Reseller Username" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">كلمة المرور (Password) <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <input type="text" id="reseller-password" class="form-control" placeholder="Enter Password" required>
+                                    <button class="btn btn-secondary-custom btn btn-secondary" type="button" onclick="App.generateResellerPassword('add')">Generate</button>
+                                </div>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label">الرصيد الافتتاحي (Initial Credits)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fa-solid fa-coins text-warning"></i></span>
+                                    <input type="number" id="reseller-credits" class="form-control" value="0" min="0" step="any">
+                                </div>
+                                <small class="text-muted mt-1 d-block">سيتم خصم هذا مبلغ من رصيدك الحالي.</small>
+                            </div>
+                            <div class="col-12 mt-4 text-end">
+                                <button type="button" class="btn btn-outline-secondary px-4 me-2" onclick="document.getElementById('add-reseller-modal').style.display='none'" style="border-radius: 8px;">إلغاء ✕</button>
+                                <button type="submit" class="btn-primary px-4">
+                                    <i class="fa-solid fa-user-plus me-2"></i> إضافة موزع جديد (Add Reseller)
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Edit Reseller Modal Overlay -->
+            <div id="edit-reseller-modal" class="modal-overlay-card">
+                <div class="modal-card-content dashboard-section-card" style="border-top: 4px solid var(--secondary) !important; margin: auto;">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h3 class="mb-0">تعديل بيانات الموزع (Edit Reseller Details) ✏️</h3>
+                        <button type="button" class="btn-close-modal" onclick="App.cancelEditReseller()" style="background: none; border: none; font-size: 1.5rem; color: inherit; cursor: pointer;">✕</button>
+                    </div>
+                    <form id="edit-reseller-form">
+                        <input type="hidden" id="edit-reseller-id" value="">
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <label class="form-label">اسم المستخدم (Username) <span class="text-danger">*</span></label>
+                                <input type="text" id="edit-reseller-username" class="form-control" placeholder="Username" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">كلمة المرور الجديدة (New Password)</label>
+                                <div class="input-group">
+                                    <input type="text" id="edit-reseller-password" class="form-control" placeholder="اتركه فارغاً لعدم التغيير">
+                                    <button class="btn btn-secondary-custom btn btn-secondary" type="button" onclick="App.generateResellerPassword('edit')">Generate</button>
+                                </div>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label">الرصيد الحالي بالج.م (Current Credits) <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fa-solid fa-coins text-warning"></i></span>
+                                    <input type="number" id="edit-reseller-credits" class="form-control" min="0" step="any" required>
+                                </div>
+                            </div>
+                            <div class="col-12 mt-4 text-end">
+                                <button type="button" class="btn btn-outline-secondary px-4 me-2" onclick="App.cancelEditReseller()" style="border-radius: 8px;">إلغاء ✕</button>
+                                <button type="submit" class="btn-primary px-4" style="background-color: var(--secondary); border-color: var(--secondary)">
+                                    <i class="fa-solid fa-user-pen me-2"></i> تحديث البيانات (Update Reseller)
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Charge Reseller Credits Modal Overlay -->
+            <div id="charge-reseller-modal" class="modal-overlay-card">
+                <div class="modal-card-content dashboard-section-card" style="border-top: 4px solid var(--primary) !important; margin: auto; width: 420px; max-width: 95vw; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h3 class="mb-0">شحن رصيد الموزع (Charge Credits) 💳</h3>
+                        <button type="button" class="btn-close-modal" onclick="App.closeChargeResellerModal()" style="background: none; border: none; font-size: 1.5rem; color: inherit; cursor: pointer;">✕</button>
+                    </div>
+                    <form id="charge-reseller-form">
+                        <input type="hidden" id="charge-reseller-id" value="">
+                        <div class="mb-3">
+                            <label class="form-label" style="font-weight: 600;">اسم الموزع</label>
+                            <input type="text" id="charge-reseller-username" class="form-control text-start" readonly style="background-color: var(--border-light); cursor: not-allowed;">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" style="font-weight: 600;">الرصيد الحالي</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-coins text-warning"></i></span>
+                                <input type="text" id="charge-reseller-current-credits" class="form-control text-start" readonly style="background-color: var(--border-light); cursor: not-allowed;">
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label" style="font-weight: 600;">المبلغ المراد شحنه (ج.م) <span class="text-danger">*</span></label>
+                            <input type="number" step="0.1" id="charge-reseller-amount" class="form-control text-start" placeholder="e.g. 50 أو -20 للخصم" required>
+                            <div class="form-text text-secondary small mt-1">اكتب قيمة موجبة للشحن، أو سالبة للخصم.</div>
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <button type="submit" class="btn-primary" style="flex: 1;">تأكيد العملية 🚀</button>
+                            <button type="button" class="btn btn-outline-secondary" style="flex: 1; border-radius: 8px;" onclick="App.closeChargeResellerModal()">إلغاء</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="row">
+
+                <!-- Resellers Table -->
+                <div class="col-lg-12 mb-4">
+                    <div class="dashboard-section-card h-100">
+                        <h3>قائمة الموزعين</h3>
+                        <div class="table-wrapper">
+                            <table class="data-table text-center">
+                                <thead>
+                                    <tr>
+                                        <th>اسم المستخدم</th>
+                                        <th>الرصيد (ج.م)</th>
+                                        <th>الحالة</th>
+                                        <th>تاريخ الإنشاء</th>
+                                        <th class="text-end" style="padding-right: 35px;">التحكم والعمليات</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-resellers-list">
+                                    <!-- Loaded via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==========================================
+             TAB 8: SERVERS & PACKAGES (Admin Only)
+             ========================================== -->
+        <div id="tab-admin-panels-services" class="tab-content" style="display:none">
+            <!-- Action buttons to toggle form visibility -->
+            <div class="d-flex gap-2 mb-3">
+                <button class="btn-primary" id="btn-show-add-panel"><i class="fa-solid fa-server me-1"></i> إضافة سيرفر جديد 🖥️</button>
+                <button class="btn-primary" id="btn-show-add-service" style="background-color: var(--secondary)"><i class="fa-solid fa-tags me-1"></i> ضبط أسعار الباقات 💳</button>
+            </div>
+
+            <!-- Forms Row -->
+            <div class="row">
+                <!-- Server Config Form Wrapper -->
+                <div class="col-lg-6 col-md-12 mb-4" id="add-panel-card-container" style="display:none">
+                    <div class="dashboard-section-card h-100" style="border-top: 4px solid var(--primary) !important;">
+                        <h3 id="panel-form-title">إضافة خادم إكستريم جديد (Configure Xtream Panel) 🖥️</h3>
+                        <form id="add-panel-form">
+                            <input type="hidden" id="edit-panel-id" value="">
+                            <div class="form-group mb-2">
+                                <label>اسم السيرفر (Panel Title)</label>
+                                <input type="text" id="panel-name" placeholder="e.g. MH, Alfa, Nova" required>
+                            </div>
+                            <div class="form-group mb-2">
+                                <label>رابط السيرفر (Panel Host Domain)</label>
+                                <input type="url" id="panel-url" placeholder="http://server.com:8080" required>
+                            </div>
+                            <div class="form-group mb-2">
+                                <label>اسم مستخدم لوحة الموزع (Reseller Username)</label>
+                                <input type="text" id="panel-username" placeholder="admin" required>
+                            </div>
+                            <div class="form-group mb-2">
+                                <label>كلمة مرور لوحة الموزع (Reseller Password)</label>
+                                <input type="password" id="panel-password" placeholder="Password" required>
+                            </div>
+                            <div class="d-flex gap-2 mt-3">
+                                <button type="submit" class="btn-primary flex-fill" id="btn-save-panel">حفظ اتصال السيرفر 💾</button>
+                                <button type="button" class="btn btn-outline-secondary" id="btn-cancel-edit-panel" style="display:none; border-radius: 8px;">إلغاء ✕</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Service Package Form Wrapper -->
+                <div class="col-lg-6 col-md-12 mb-4" id="add-service-card-container" style="display:none">
+                    <div class="dashboard-section-card h-100" style="border-top: 4px solid var(--secondary) !important;">
+                        <h3>ضبط تسعير باقات السيرفر (Configure Server Package Prices) 💳</h3>
+                        <form id="add-service-form">
+                            <div class="form-group mb-3">
+                                <label class="form-label">اختر السيرفر (Select Server)</label>
+                                <select id="service-panel-id" class="form-select text-start" required onchange="App.onServerPriceSelectChange()">
+                                    <option value="">Choose Panel...</option>
+                                </select>
+                            </div>
+                            
+                            <div id="server-packages-prices-list" style="display: none;">
+                                <h5 class="mb-3 text-muted">أدخل سعر كل باقة بالرصيد (ج.م) :</h5>
+                                
+                                <div class="form-group mb-2">
+                                    <label class="form-label">تجريبي 24 ساعة - TEST (Package ID: 10)</label>
+                                    <input type="number" id="price-pkg-10" class="form-control" value="0" min="0" step="any" required>
+                                </div>
+                                <div class="form-group mb-2">
+                                    <label class="form-label">باقة 3 أشهر (Package ID: 54)</label>
+                                    <input type="number" id="price-pkg-54" class="form-control" value="55" min="0" step="any" required>
+                                </div>
+                                <div class="form-group mb-2">
+                                    <label class="form-label">باقة 6 أشهر (Package ID: 55)</label>
+                                    <input type="number" id="price-pkg-55" class="form-control" value="110" min="0" step="any" required>
+                                </div>
+                                <div class="form-group mb-2">
+                                    <label class="form-label">باقة 12 شهر (Package ID: 56)</label>
+                                    <input type="number" id="price-pkg-56" class="form-control" value="220" min="0" step="any" required>
+                                </div>
+                                <div class="form-group mb-2">
+                                    <label class="form-label">باقة 15 شهر (Package ID: 119)</label>
+                                    <input type="number" id="price-pkg-119" class="form-control" value="275" min="0" step="any" required>
+                                </div>
+                                
+                                <button type="submit" class="btn-primary mt-3 w-100" style="background-color: var(--secondary); border: 0;">حفظ أسعار الباقات لـهذا السيرفر 💾</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tables Row -->
+            <div class="row">
+                <!-- Connected Servers Table -->
+                <div class="col-lg-6 col-md-12 mb-4">
+                    <div class="dashboard-section-card h-100">
+                        <h3>اتصالات سيرفرات إكستريم (Xtream Panels)</h3>
+                        <div class="table-wrapper">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>الاسم</th>
+                                        <th>رابط السيرفر</th>
+                                        <th>اسم المستخدم</th>
+                                        <th>الحالة</th>
+                                        <th>التحكم</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-panels-list">
+                                    <!-- Loaded via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Service Packages Table -->
+                <div class="col-lg-6 col-md-12 mb-4">
+                    <div class="dashboard-section-card h-100">
+                        <h3>دليل الخدمات والباقات والأسعار</h3>
+                        <div class="table-wrapper">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>اسم الباقة</th>
+                                        <th>السيرفر</th>
+                                        <th>معرف الباقة (ID)</th>
+                                        <th>السعر (ج.م)</th>
+                                        <th>التحكم</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-services-list">
+                                    <!-- Loaded via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==========================================
+             TAB 8b: ADMIN MANAGE CODES
+             ========================================== -->
+        <div id="tab-admin-codes" class="tab-content" style="display:none">
+            <div class="row">
+                <!-- Add Category Card -->
+                <div class="col-md-4">
+                    <div class="dashboard-section-card">
+                        <h3 class="mb-4"><i class="fa-solid fa-folder-plus text-primary me-2"></i> Add Code Category</h3>
+                        <form id="form-add-code-category">
+                            <div class="mb-3">
+                                <label class="form-label">Category Name (e.g. Hyper IPTV)</label>
+                                <input type="text" id="code-cat-name" class="form-control text-start" placeholder="Nova, Hyper, Cobra..." required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">السعر (ج.م) (سعر الكود بالج.م)</label>
+                                <input type="number" step="0.1" id="code-cat-cost" class="form-control text-start" placeholder="e.g. 2.0" required>
+                            </div>
+                            <button type="submit" class="btn-primary w-100 mt-2">Create Category ➕</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Upload Codes Card -->
+                <div class="col-md-8">
+                    <div class="dashboard-section-card">
+                        <h3 class="mb-4"><i class="fa-solid fa-file-arrow-up text-primary me-2"></i> Upload Stock Codes</h3>
+                        <form id="form-upload-codes">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Select Code Category</label>
+                                    <select id="code-upload-category" class="form-select text-start" required>
+                                        <option value="">-- Choose Category --</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-12 mb-3">
+                                    <label class="form-label">Paste Activation Codes (One per line or comma-separated)</label>
+                                    <textarea id="code-upload-list" class="form-control text-start" rows="6" placeholder="CODE-1111-2222&#10;CODE-3333-4444&#10;CODE-5555-6666" required></textarea>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn-primary w-auto px-4 mt-2">Upload Stock Codes 🚀</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Edit Category Modal -->
+            <div id="edit-category-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.55); z-index:9999; align-items:center; justify-content:center;">
+                <div style="border-radius:16px; padding:32px; width:420px; max-width:95vw; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+                    <h4 style="margin:0 0 20px; font-weight:700;">✏️ تعديل فئة الأكواد</h4>
+                    <div class="mb-3">
+                        <label class="form-label">اسم الفئة</label>
+                        <input type="text" id="edit-cat-name" class="form-control text-start" placeholder="اسم الفئة">
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label">السعر (ج.م)</label>
+                        <input type="number" step="0.1" id="edit-cat-price" class="form-control text-start" placeholder="0.0">
+                    </div>
+                    <input type="hidden" id="edit-cat-id">
+                    <div style="display:flex; gap:10px;">
+                        <button class="btn-primary" style="flex:1;" onclick="App.submitEditCategory()">💾 حفظ التعديلات</button>
+                        <button class="btn btn-outline-secondary" style="flex:1; border-radius:8px;" onclick="App.closeEditCategoryModal()">إلغاء</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Delete Confirm Modal -->
+            <div id="delete-category-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.55); z-index:9999; align-items:center; justify-content:center;">
+                <div style="border-radius:16px; padding:32px; width:380px; max-width:95vw; box-shadow:0 20px 60px rgba(0,0,0,0.3); text-align:center;">
+                    <div style="font-size:3rem; margin-bottom:12px;">🗑️</div>
+                    <h4 style="margin:0 0 10px; font-weight:700;">تأكيد الحذف</h4>
+                    <p style="margin-bottom:24px;">هل أنت متأكد من حذف فئة <strong id="delete-cat-name-label"></strong> ؟</p>
+                    <input type="hidden" id="delete-cat-id">
+                    <div style="display:flex; gap:10px; justify-content:center;">
+                        <button class="btn-primary" style="background: var(--danger); flex:1;" onclick="App.submitDeleteCategory()">نعم، احذف</button>
+                        <button class="btn btn-outline-secondary" style="flex:1; border-radius:8px;" onclick="App.closeDeleteCategoryModal()">إلغاء</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- View Codes Modal -->
+            <div id="view-codes-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:9999; align-items:flex-start; justify-content:center; overflow-y:auto; padding:40px 16px;">
+                <div id="view-codes-modal-inner" style="border-radius:16px; padding:28px; width:700px; max-width:98vw; box-shadow:0 20px 60px rgba(0,0,0,0.4); margin:auto;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
+                        <h4 style="margin:0; font-weight:700;">📋 أكواد فئة: <span id="view-codes-cat-name" style="color:var(--primary);"></span></h4>
+                        <button onclick="App.closeViewCodesModal()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;line-height:1;">✕</button>
+                    </div>
+                    <div style="display:flex; gap:12px; margin-bottom:16px; flex-wrap:wrap;">
+                        <span id="view-codes-total" class="badge bg-primary" style="font-size:0.85rem; padding:6px 12px;"></span>
+                        <span id="view-codes-available" class="badge bg-success" style="font-size:0.85rem; padding:6px 12px;"></span>
+                        <span id="view-codes-sold" class="badge bg-danger" style="font-size:0.85rem; padding:6px 12px;"></span>
+                    </div>
+                    <div class="table-wrapper" style="max-height:400px; overflow-y:auto;">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>الكود</th>
+                                    <th>الحالة</th>
+                                    <th>مباع لـ</th>
+                                    <th>سعر البيع</th>
+                                    <th>رصيد قبل</th>
+                                    <th>رصيد بعد</th>
+                                    <th>تاريخ البيع</th>
+                                    <th>حذف</th>
+                                </tr>
+                            </thead>
+                            <tbody id="view-codes-list">
+                                <tr><td colspan="6" class="text-center">جاري التحميل...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div style="margin-top:18px; text-align:left;">
+                        <button class="btn btn-outline-secondary" style="border-radius:8px; padding:8px 24px;" onclick="App.closeViewCodesModal()">إغلاق</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Categories Overview Table -->
+            <div class="dashboard-section-card mt-4">
+                <h3 class="mb-4"><i class="fa-solid fa-list-check text-primary me-2"></i> دليل فئات الأكواد المتوفرة</h3>
+                <div class="table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>اسم الفئة</th>
+                                <th>السعر (ج.م)</th>
+                                <th>الكمية المتوفرة بالمخزن</th>
+                                <th class="text-end" style="padding-right: 35px;">التحكم والعمليات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-code-categories-list">
+                            <!-- Loaded via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==========================================
+             TAB 8c: RESELLER CODES STORE
+             ========================================== -->
+        <div id="tab-reseller-codes" class="tab-content" style="display:none">
+            <div class="dashboard-section-card">
+                <h3 class="mb-4"><i class="fa-solid fa-store text-primary me-2"></i> Active Codes Store (متجر الأكواد)</h3>
+                <p class="text-secondary small mb-4">Select an IPTV application code type and purchase instantly. The code will be delivered and displayed here immediately after point deduction.</p>
+                
+                <div class="row" id="reseller-codes-grid">
+                    <!-- Cards will be populated dynamically -->
+                </div>
+            </div>
+
+            <div class="dashboard-section-card mt-4">
+                <h3 class="mb-4"><i class="fa-solid fa-clock-rotate-left text-primary me-2"></i> Your Purchased Codes History</h3>
+                <div class="table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Category Name</th>
+                                <th>Activation Code</th>
+                                <th>Purchase Date</th>
+                                <th>Copy</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reseller-codes-history-list">
+                            <!-- Loaded via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==========================================
+             TAB 10: ACTIVITY LOGS
+             ========================================== -->
+        <div id="tab-activity-logs" class="tab-content" style="display:none">
+            <div class="dashboard-section-card">
+                <h3>سجلات إنشاء الاشتراكات والمبيعات 📜</h3>
+                <div class="table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>الموزع</th>
+                                <th>السيرفر</th>
+                                <th>اسم المستخدم</th>
+                                <th>كلمة المرور</th>
+                                <th>الباقة</th>
+                                <th>المبلغ المخصوم (ج.م)</th>
+                                <th>تاريخ الانتهاء</th>
+                                <th>التاريخ والوقت</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-logs-subscriptions">
+                            <!-- Loaded via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="dashboard-section-card">
+                <h3>المعاملات المالية وشحن الرصيد 💰</h3>
+                <div class="table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>الموزع</th>
+                                <th>نوع العملية</th>
+                                <th>القيمة (ج.م)</th>
+                                <th>التفاصيل</th>
+                                <th>التاريخ والوقت</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-logs-transactions">
+                            <!-- Loaded via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==========================================
+             TAB 11: PROFILE & SETTINGS
+             ========================================== -->
+        <div id="tab-profile" class="tab-content" style="display:none">
+            <div class="row justify-content-center">
+                <div class="col-md-6">
+                    <div class="dashboard-section-card">
+                        <h3 class="mb-4"><i class="fa-solid fa-key text-primary me-2"></i> تغيير كلمة المرور (Change Password)</h3>
+                        <form id="form-change-password">
+                            <div class="mb-3">
+                                <label class="form-label" style="font-weight: 600;">كلمة المرور الحالية</label>
+                                <input type="password" id="change-pass-current" class="form-control text-start" placeholder="••••••••" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" style="font-weight: 600;">كلمة المرور الجديدة</label>
+                                <input type="password" id="change-pass-new" class="form-control text-start" placeholder="••••••••" required>
+                            </div>
+                            <div class="mb-4">
+                                <label class="form-label" style="font-weight: 600;">تأكيد كلمة المرور الجديدة</label>
+                                <input type="password" id="change-pass-confirm" class="form-control text-start" placeholder="••••••••" required>
+                            </div>
+                            <button type="submit" class="btn-primary w-100 py-3" style="font-weight: 700; font-size: 1rem;">تحديث كلمة المرور 🔐</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ==========================================
+         ORIGINAL SYSTEM MODALS & OVERLAYS
+         ========================================== -->
+
+    <!-- Sidebar For Adding Customer (Admin Customer Organizer) -->
+    <div id="sidebar-overlay" class="overlay"></div>
+    
+
+
+    <!-- WhatsApp Templates Modal -->
+    <div id="templates-modal" class="modal">
+        <div class="modal-content templates-modal-content">
+            <div class="modal-header">
+                <h3>Message Templates 💬</h3>
+                <button id="close-templates-modal" class="close-btn">×</button>
+            </div>
+            <div class="templates-body">
+                <p id="template-customer-name" style="margin-bottom: 15px; font-weight: 700; color: var(--primary);"></p>
+                <div class="template-btns">
+                    <button id="tmp-reminder" class="template-option-btn" data-type="reminder">🔔 Expiry Warning Reminder</button>
+                    <button id="tmp-expired" class="template-option-btn" data-type="expired">⚠️ Expired Line Alert</button>
+                    <button id="tmp-welcome" class="template-option-btn" data-type="welcome">🎉 Welcome Subscription Confirmation</button>
+                    <button id="tmp-general" class="template-option-btn" data-type="general">📱 General Support Inquiry</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit/Manage Customer Modal -->
+    <div id="manage-modal" class="modal">
+        <div class="modal-content text-end">
+            <div class="modal-header">
+                <h3>تعديل بيانات المشترك (Edit Client Profile)</h3>
+                <button id="close-manage-modal" class="close-btn">×</button>
+            </div>
+            <div class="manage-body">
+                <input type="hidden" id="edit-id">
+                <div class="form-grid">
+                    <div class="form-group text-start">
+                        <label>اسم المستخدم / الهاتف (Username / Phone)</label>
+                        <input type="text" id="edit-username">
+                    </div>
+                    <div class="form-group text-start">
+                        <label>كلمة المرور (Password)</label>
+                        <input type="text" id="edit-password">
+                    </div>
+                    <div class="form-group text-start">
+                        <label>تاريخ الانتهاء (Expiry Date)</label>
+                        <input type="date" id="edit-expire">
+                    </div>
+                </div>
+                <div class="form-group text-start mt-2">
+                    <label>ملاحظات (Notes)</label>
+                    <textarea id="edit-note" rows="2"></textarea>
+                </div>
+
+                <div class="manage-actions mt-3">
+                    <div class="renew-section text-start">
+                        <label>تجديد / تمديد الاشتراك (Extend / Renew Plan):</label>
+                        <div class="renew-btns" id="manage-renew-btns">
+                            <!-- Dynamic -->
+                        </div>
+                    </div>
+                    <div class="danger-zone d-flex gap-2 mt-4">
+                        <button class="btn-primary flex-fill" id="save-edit-btn" style="width: auto; padding: 10px 25px;">حفظ التغييرات 💾</button>
+                        <button class="btn-delete-card flex-fill" id="delete-btn-modal" style="width: auto; padding: 10px 25px; background: var(--danger);">حذف المشترك 🗑️</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reseller Details Modal -->
+    <div id="reseller-details-modal" class="modal">
+        <div class="modal-content text-end" style="max-width: 950px; width: 95%;">
+            <div class="modal-header">
+                <h3>Reseller Details & Activity (تفاصيل عمليات الموزع)</h3>
+                <button id="close-reseller-details-modal" class="close-btn">×</button>
+            </div>
+            
+            <div class="row mb-3">
+                <div class="col-md-6 text-start">
+                    <h5>Username: <span id="det-reseller-username" class="text-primary font-bold">---</span></h5>
+                </div>
+                <div class="col-md-6 text-start">
+                    <h5>الرصيد: <span id="det-reseller-credits" class="text-success font-bold">0.00</span></h5>
+                </div>
+            </div>
+
+            <!-- Tabs/Subsections -->
+            <div class="dashboard-section-card mb-3 text-start">
+                <h4 class="mb-3"><i class="fa-solid fa-server me-2 text-primary"></i> Subscriptions Created (الاشتراكات المفعّلة)</h4>
+                <div class="table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Server</th>
+                                <th>Username</th>
+                                <th>Password</th>
+                                <th>Service</th>
+                                <th>المبلغ المخصوم (ج.م)</th>
+                                <th>Expiry Date</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="det-reseller-subscriptions">
+                            <!-- Loaded via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="dashboard-section-card mb-3 text-start">
+                <h4 class="mb-3"><i class="fa-solid fa-ticket me-2 text-warning"></i> Purchased Codes (الأكواد المشتراة)</h4>
+                <div class="table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th>Activation Code</th>
+                                <th>Price</th>
+                                <th>Purchase Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="det-reseller-codes">
+                            <!-- Loaded via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="dashboard-section-card text-start">
+                <h4 class="mb-3"><i class="fa-solid fa-coins me-2 text-success"></i> شحن الرصيد وسجل المعاملاتs (سجل عمليات الشحن)</h4>
+                <div class="table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Action</th>
+                                <th>Amount</th>
+                                <th>Description</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="det-reseller-transactions">
+                            <!-- Loaded via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sync Credentials Modal -->
+    <div id="sync-modal" class="modal">
+        <div class="modal-content text-end">
+            <div class="modal-header">
+                <h3>Sync Database 🔄</h3>
+                <button id="close-sync-modal" class="close-btn">×</button>
+            </div>
+            <div class="form-group">
+                <label>Panel Username</label>
+                <input type="text" id="sync-user" value="bahe2026">
+            </div>
+            <div class="form-group">
+                <label>SQL Encryption Key</label>
+                <input type="text" id="sync-key" value="mh123321">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="sync-pass" placeholder="Type Panel Password...">
+            </div>
+            <div class="modal-actions mt-3">
+                <button id="start-sync-action" class="btn-primary">Execute Sync 🚀</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="copy-toast" class="copy-toast">Copied successfully! ✅</div>
+
+    <!-- Loading Pagination -->
+    <div id="load-more-container" style="text-align: center; padding: 20px; display: none;">
+        <button class="btn-primary" id="load-more-btn" style="width: auto; padding: 12px 40px;">Load More👇</button>
+    </div>
+
+    <!-- Premium Creation Loading Modal -->
+    <div id="reseller-creation-loading-modal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 9999; justify-content: center; align-items: center;">
+        <div class="modal-card-custom text-center" style="max-width: 450px;">
+            <div class="spinner-border text-primary mb-4" role="status" style="width: 3.5rem; height: 3.5rem; border-width: 0.35em;">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <h4 class="font-weight-bold mb-3">Creating Subscription Line</h4>
+            <p class="text-secondary small mb-4">Please wait while we connect to the master IPTV server and activate your line.</p>
+            
+            <div class="loading-steps text-start mx-auto" style="max-width: 300px; font-size: 0.95rem;">
+                <div class="loading-step mb-3 d-flex align-items-center" id="step-connect">
+                    <i class="fa-solid fa-circle-notch fa-spin text-primary me-3"></i> 
+                    <span>Connecting to StreamCreed Server...</span>
+                </div>
+                <div class="loading-step mb-3 d-flex align-items-center text-muted" id="step-login">
+                    <i class="fa-regular fa-circle me-3"></i> 
+                    <span>Logging in with credentials...</span>
+                </div>
+                <div class="loading-step mb-3 d-flex align-items-center text-muted" id="step-fill">
+                    <i class="fa-regular fa-circle me-3"></i> 
+                    <span>Submitting subscriber details...</span>
+                </div>
+                <div class="loading-step d-flex align-items-center text-muted" id="step-done">
+                    <i class="fa-regular fa-circle me-3"></i> 
+                    <span>جاري التفعيل وخصم الرصيد...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Premium Code Purchase Confirmation Modal -->
+    <div id="code-purchase-confirm-modal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 9999; justify-content: center; align-items: center;">
+        <div class="modal-card-custom text-center" style="max-width: 450px; border-top: 4px solid var(--primary) !important;">
+            <div class="mb-4" style="font-size: 4rem; color: var(--primary);">
+                <i class="fa-solid fa-cart-shopping animate__animated animate__pulse animate__infinite"></i>
+            </div>
+            <h3 class="font-weight-bold mb-2">تأكيد عملية الشراء</h3>
+            <p class="text-secondary small mb-4" id="confirm-modal-text">هل أنت متأكد من رغبتك في شراء كود تفعيل؟</p>
+            
+            <div class="d-flex gap-2">
+                <button class="btn btn-primary flex-fill" id="btn-confirm-purchase-action" style="font-weight: 700; border-radius: 8px; padding: 12px 20px;">
+                    شراء الآن 🛒
+                </button>
+                <button class="btn btn-outline-secondary flex-fill" id="btn-cancel-purchase-action" style="border-radius: 8px; padding: 12px 20px; font-weight: 700;">
+                    إلغاء
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Premium Code Purchase Success Modal -->
+    <div id="code-purchase-success-modal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 9999; justify-content: center; align-items: center;">
+        <div class="modal-card-custom text-center" style="max-width: 450px; border-top: 4px solid var(--success) !important;">
+            <div class="mb-4" style="font-size: 4rem; color: var(--success);">
+                <i class="fa-solid fa-circle-check animate__animated animate__bounceIn"></i>
+            </div>
+            <h3 class="font-weight-bold mb-2">تم الشراء بنجاح! 🎉</h3>
+            <p class="text-secondary small mb-4">تم خصم الج.م بنجاح وتوليد كود التفعيل الخاص بك.</p>
+            
+            <div class="p-3 mb-4 text-center" style="background: rgba(25, 135, 84, 0.05); border: 1px dashed var(--success); border-radius: 8px;">
+                <span class="text-secondary d-block small mb-1">كود التفعيل (Activation Code)</span>
+                <span class="font-weight-bold d-block text-success" id="purchased-code-display" style="font-size: 1.5rem; letter-spacing: 1px;">XXXX-XXXX-XXXX</span>
+            </div>
+            
+            <div class="d-flex gap-2">
+                <button class="btn btn-success flex-fill text-white" id="btn-copy-purchased-code" style="font-weight: 700; border-radius: 8px; padding: 12px 20px;">
+                    <i class="fa-solid fa-copy me-2"></i> نسخ الكود
+                </button>
+                <button class="btn btn-outline-secondary flex-fill" id="btn-close-purchased-modal" style="border-radius: 8px; padding: 12px 20px; font-weight: 700;">
+                    إغلاق
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- Premium Xtream Subscription Line Creation Modal -->
+    <div id="reseller-xtream-create-modal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 9999; justify-content: center; align-items: center;">
+        <div class="modal-card-custom" style="max-width: 480px; border-radius: 16px; border-top: 5px solid var(--primary) !important; overflow: hidden; padding: 28px;">
+            
+            <!-- Icon Accent and Header -->
+            <div class="text-center mb-4">
+                <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3 animate-pulse" style="width: 60px; height: 60px; background: rgba(13, 110, 253, 0.1);">
+                    <i class="fa-solid fa-user-plus" style="font-size: 1.6rem; color: var(--primary);"></i>
+                </div>
+                <h3 class="font-weight-bold mb-1" id="xtream-modal-title" style="font-size: 1.4rem;">إنشاء اشتراك جديد</h3>
+                <p class="text-secondary small mb-0">يرجى كتابة بيانات العميل واختيار الباقة لتوليد الاشتراك تلقائياً.</p>
+            </div>
+            
+            <form id="reseller-create-line-form" onsubmit="event.preventDefault()">
+                <div class="row g-3 text-start">
+                    
+                    <!-- Username Input Group -->
+                    <div class="col-md-12">
+                        <label class="form-label small fw-bold mb-1">اسم المستخدم (Username) <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text" style="background: rgba(0,0,0,0.02); border-color: var(--border-light); color: var(--text-low-light);"><i class="fa-solid fa-user"></i></span>
+                            <input type="text" id="reseller-new-username" class="form-control text-start" placeholder="Username (Leave empty for auto-generate)" style="border-left: none;">
+                        </div>
+                    </div>
+                    
+                    <!-- Password Input Group -->
+                    <div class="col-md-12">
+                        <label class="form-label small fw-bold mb-1">كلمة المرور (Password) <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text" style="background: rgba(0,0,0,0.02); border-color: var(--border-light); color: var(--text-low-light);"><i class="fa-solid fa-key"></i></span>
+                            <input type="text" id="reseller-new-password" class="form-control text-start" placeholder="Password (Leave empty for auto-generate)" style="border-left: none;">
+                        </div>
+                    </div>
+                    
+                    <!-- Service Selection Group -->
+                    <div class="col-md-12">
+                        <label class="form-label small fw-bold mb-1">الباقة المطلوبة <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text" style="background: rgba(0,0,0,0.02); border-color: var(--border-light); color: var(--text-low-light);"><i class="fa-solid fa-box"></i></span>
+                            <select id="reseller-select-service" class="form-select text-start" required style="border-left: none; border-radius: 0 8px 8px 0;">
+                                <option value="">Choose Service...</option>
+                            </select>
+                        </div>
+                        <!-- Package Info Display Badge -->
+                        <div id="reseller-package-info-display" class="mt-2" style="display: none;"></div>
+                        <!-- Live Price Preview Badge -->
+                        <div id="service-price-preview" class="mt-2" style="display: none;"></div>
+                    </div>
+                    
+                    <!-- Line Type Selection Group (Hidden - Auto Selected) -->
+                    <div class="col-md-12" style="display: none !important;">
+                        <label class="form-label small fw-bold mb-1">نوع الخط (Line Type) <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text" style="background: rgba(0,0,0,0.02); border-color: var(--border-light); color: var(--text-low-light);"><i class="fa-solid fa-tags"></i></span>
+                            <select id="reseller-line-type" class="form-select text-start" style="border-left: none; border-radius: 0 8px 8px 0;">
+                                <option value="official">رسمي (Official)</option>
+                                <option value="trial">تجريبي (Trial - 24 Hours)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Notes Group -->
+                    <div class="col-md-12">
+                        <label class="form-label small fw-bold mb-1">ملاحظات (Notes)</label>
+                        <div class="input-group">
+                            <span class="input-group-text" style="background: rgba(0,0,0,0.02); border-color: var(--border-light); color: var(--text-low-light); align-items: flex-start; padding-top: 12px;"><i class="fa-solid fa-comment-dots"></i></span>
+                            <textarea id="reseller-notes" class="form-control text-start" style="height: 60px; border-left: none; border-radius: 0 8px 8px 0;" placeholder="ملاحظات حول المشترك..."></textarea>
+                        </div>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="col-md-12 mt-4 d-flex gap-2">
+                        <button type="submit" id="reseller-btn-create-sub" class="btn btn-primary flex-fill" style="font-weight:700; border-radius: 8px; padding: 12px; transition: 0.2s;">
+                            إنشاء الاشتراك 🚀
+                        </button>
+                        <button type="button" id="btn-cancel-xtream-create" class="btn btn-outline-secondary flex-fill" style="border-radius: 8px; padding: 12px; font-weight: 700; transition: 0.2s;">
+                            إلغاء
+                        </button>
+                    </div>
+
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- Premium Xtream Creation Success Modal -->
+    <div id="xtream-creation-success-modal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 9999; justify-content: center; align-items: center;">
+        <div class="modal-card-custom text-center" style="max-width: 480px; border-top: 4px solid var(--success) !important;">
+            <div class="mb-4" style="font-size: 4rem; color: var(--success);">
+                <i class="fa-solid fa-circle-check animate__animated animate__bounceIn"></i>
+            </div>
+            <h3 class="font-weight-bold mb-2">تم إنشاء الاشتراك بنجاح! 🎉</h3>
+            <p class="text-secondary small mb-4" id="xtream-success-server-name">تم إعداد خط المشترك على السيرفر بنجاح.</p>
+            
+            <div class="p-3 mb-3 text-start" style="background: rgba(25, 135, 84, 0.05); border: 1px solid rgba(25, 135, 84, 0.15); border-radius: 8px; font-size: 0.95rem;">
+                <div class="mb-2"><span class="text-secondary">اسم المستخدم:</span> <strong id="xtream-success-username">XXXX</strong> <span class="ms-2 cursor-pointer text-primary" id="btn-copy-xtream-user" style="cursor: pointer;">📋</span></div>
+                <div class="mb-2"><span class="text-secondary">كلمة السر:</span> <strong id="xtream-success-password">XXXX</strong> <span class="ms-2 cursor-pointer text-primary" id="btn-copy-xtream-pass" style="cursor: pointer;">📋</span></div>
+                <div><span class="text-secondary">تاريخ الانتهاء:</span> <strong id="xtream-success-expire">XXXX</strong></div>
+            </div>
+            
+            <div class="p-3 mb-4 text-start" style="background: rgba(0,0,0,0.02); border: 1px solid var(--border-light); border-radius: 8px; font-size: 0.85rem;">
+                <span class="text-secondary d-block small mb-1">M3U Playlist URL (رابط التشغيل)</span>
+                <div class="d-flex align-items-center gap-2">
+                    <input type="text" id="xtream-success-m3u-input" readonly class="form-control form-control-sm" style="font-size: 0.8rem;">
+                    <button class="btn btn-sm btn-primary" id="btn-copy-xtream-m3u" style="white-space:nowrap;">نسخ 📋</button>
+                </div>
+            </div>
+            
+            <button class="btn btn-secondary w-100" id="btn-close-xtream-success" style="font-weight: 700; border-radius: 8px; padding: 12px 20px;">
+                إغلاق
+            </button>
+        </div>
+    </div>
+    <!-- Premium Xtream Subscription Purchase Confirmation Modal -->
+    <div id="xtream-purchase-confirm-modal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 10000; justify-content: center; align-items: center;">
+        <div class="modal-card-custom text-center" style="max-width: 450px; border-top: 4px solid var(--primary) !important;">
+            <div class="mb-4" style="font-size: 4rem; color: var(--primary);">
+                <i class="fa-solid fa-receipt animate__animated animate__pulse animate__infinite"></i>
+            </div>
+            <h3 class="font-weight-bold mb-2">تأكيد خصم الج.م</h3>
+            <p class="text-secondary small mb-4">تفاصيل عملية الخصم لتوليد اشتراك إكس تريم:</p>
+            
+            <div class="p-3 mb-4 text-start" style="background: rgba(13, 110, 253, 0.05); border: 1px solid rgba(13, 110, 253, 0.15); border-radius: 8px; font-size: 0.95rem;">
+                <div class="mb-2 d-flex justify-content-between">
+                    <span class="text-secondary">رصيدك الحالي:</span>
+                    <strong id="xtream-confirm-current-balance">0.00 ج.م</strong>
+                </div>
+                <div class="mb-2 d-flex justify-content-between">
+                    <span class="text-secondary">سعر الباقة المحددة:</span>
+                    <strong id="xtream-confirm-cost" class="text-danger">-0.00 ج.م</strong>
+                </div>
+                <div class="border-top pt-2 mt-2 d-flex justify-content-between" style="font-size: 1.05rem; border-color: var(--border-light) !important;">
+                    <span class="text-secondary">الرصيد بعد الخصم:</span>
+                    <strong id="xtream-confirm-remaining-balance" class="text-success">0.00 ج.م</strong>
+                </div>
+            </div>
+            
+            <div class="d-flex gap-2">
+                <button class="btn btn-primary flex-fill" id="btn-xtream-confirm-yes" style="background: #ff007f; border: 0; font-weight: 700; border-radius: 8px; padding: 12px 20px;">
+                    تأكيد وإنشاء الحساب 🚀
+                </button>
+                <button class="btn btn-outline-light flex-fill" id="btn-xtream-confirm-no" style="border-radius: 8px; padding: 12px 20px; font-weight: 700;">
+                    تراجع
+                </button>
+            </div>
+        </div>
+    </div>
+    <script src="config.js"></script>
+    <script src="script.js?v=4.1"></script>
+</body>
+</html>

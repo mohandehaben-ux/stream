@@ -1,0 +1,42 @@
+# ====================================
+# .gitignore - Security Protection
+# ====================================
+
+# --- SECRETS & KEYS (NEVER upload these) ---
+.env
+*.env
+.env.*
+secrets.json
+config.local.js
+
+# --- LOCAL DATABASE (contains user data) ---
+database.json
+
+# --- Python Cache ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.pyc
+
+# --- Python Scratch/Debug Scripts ---
+search_*.py
+trace_*.py
+test_*.py
+fix_*.py
+
+# --- Virtual Environments ---
+venv/
+env/
+.venv/
+ENV/
+
+# --- OS Files ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Logs ---
+*.log
+logs/
