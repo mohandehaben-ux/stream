@@ -794,7 +794,7 @@ const App = {
     // --- DATA LOADING FLOWS ---
     
     async loadAdminData() {
-        const isFlask = window.location.port === '5000' || window.APP_CONFIG?.USE_BACKEND;
+        const isFlask = window.location.protocol.startsWith('http');
         if (isFlask) {
             this.sync();
             await this.loadAdminPanels();
@@ -848,7 +848,7 @@ const App = {
     },
 
     async loadAdminPanels() {
-        const isFlask = window.location.port === '5000' || window.APP_CONFIG?.USE_BACKEND;
+        const isFlask = window.location.protocol.startsWith('http');
         if (!SupabaseService.client && !isFlask) {
             this.renderAdminPanels();
             this.populatePanelsDropdown();
@@ -918,7 +918,7 @@ const App = {
     },
 
     async loadResellerData() {
-        const isFlask = window.location.port === '5000' || window.APP_CONFIG?.USE_BACKEND;
+        const isFlask = window.location.protocol.startsWith('http');
         if (isFlask) {
             try {
                 const res = await fetch(`/api/reseller/data?reseller_id=${this.state.session.id}`);
@@ -989,7 +989,7 @@ const App = {
     },
 
     async loadResellerSubscriptions() {
-        const isFlask = window.location.port === '5000' || window.APP_CONFIG?.USE_BACKEND;
+        const isFlask = window.location.protocol.startsWith('http');
         if (isFlask) {
             // Already loaded via loadResellerData in local mode, just render
             this.renderResellerSubscriptions();
@@ -1718,7 +1718,7 @@ const App = {
         }
 
         this.showToast("جاري حفظ بيانات اللوحة... ⏳");
-        const isFlask = window.location.port === '5000' || window.APP_CONFIG?.USE_BACKEND;
+        const isFlask = window.location.protocol.startsWith('http');
         if (!SupabaseService.client && !isFlask) {
             if (editIdVal) {
                 const idx = this.state.panels.findIndex(p => p.id == editIdVal);
@@ -1843,7 +1843,7 @@ const App = {
     async deletePanel(panelId) {
         if (!confirm("هل أنت متأكد من رغبتك في حذف هذا السيرفر؟ سيتم حذف جميع باقاته المرتبطة به!")) return;
         
-        const isFlask = window.location.port === '5000' || window.APP_CONFIG?.USE_BACKEND;
+        const isFlask = window.location.protocol.startsWith('http');
         if (!SupabaseService.client && !isFlask) {
             this.state.panels = this.state.panels.filter(p => p.id !== panelId);
             this.showToast("تم الحذف بنجاح! 🗑️");
@@ -2328,7 +2328,7 @@ const App = {
             const btn = document.getElementById('reseller-btn-create-sub');
             if (btn) btn.disabled = true;
 
-            const isFlask = window.location.port === '5000' || window.APP_CONFIG?.USE_BACKEND;
+            const isFlask = window.location.protocol.startsWith('http');
             if (!SupabaseService.client && !isFlask) {
                 // Simulated response in Design Mode
                 setTimeout(() => {
@@ -3016,7 +3016,7 @@ const App = {
     },
 
     async loadAdminCodesTab() {
-        const isFlask = window.location.port === '5000' || window.APP_CONFIG?.USE_BACKEND;
+        const isFlask = window.location.protocol.startsWith('http');
         if (!isFlask) {
             // Mock categories for Design Mode
             const mockCats = [
@@ -3247,7 +3247,7 @@ const App = {
     },
 
     async loadResellerCodesTab() {
-        const isFlask = window.location.port === '5000' || window.APP_CONFIG?.USE_BACKEND;
+        const isFlask = window.location.protocol.startsWith('http');
         if (!isFlask) {
             // Mock grid & history for Design Mode
             const mockCats = [
@@ -3412,7 +3412,7 @@ const App = {
 
         if (!name || isNaN(cost) || cost < 0) return alert("يرجى إدخال بيانات صحيحة");
 
-        const isFlask = window.location.port === '5000' || window.APP_CONFIG?.USE_BACKEND;
+        const isFlask = window.location.protocol.startsWith('http');
         if (!isFlask) {
             alert("[وضع المعاينة] تم إضافة الفئة بنجاح!");
             document.getElementById('form-add-code-category').reset();
@@ -3445,7 +3445,7 @@ const App = {
 
         if (!categoryId || !codes) return alert("يرجى اختيار الفئة ولصق الأكواد");
 
-        const isFlask = window.location.port === '5000' || window.APP_CONFIG?.USE_BACKEND;
+        const isFlask = window.location.protocol.startsWith('http');
         if (!isFlask) {
             alert("[وضع المعاينة] تم رفع الأكواد بنجاح!");
             document.getElementById('form-upload-codes').reset();
@@ -3534,7 +3534,7 @@ const App = {
                     return alert("برجاء إدخال اسم المستخدم وكلمة المرور!");
                 }
 
-                const isFlask = window.location.port === '5000' || window.APP_CONFIG?.USE_BACKEND;
+                const isFlask = window.location.protocol.startsWith('http');
 
                 if (isFlask) {
                     // --- FLASK BACKEND LOGIN (Production Mode) ---
