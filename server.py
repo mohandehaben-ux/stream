@@ -6,6 +6,8 @@ import bcrypt
 from datetime import datetime
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
+import urllib.parse as _urlparse
+_q = _urlparse.quote
 
 app = Flask(__name__, static_url_path='', static_folder='.')
 CORS(app)
@@ -200,7 +202,7 @@ def login():
         headers = get_supabase_headers()
         # Step 1: Find user by username only
         res = requests.get(
-            f"{SB_URL}/rest/v1/users?username=eq.{username}&select=id,username,role,credits,status,password_hash",
+            f"{SB_URL}/rest/v1/users?username=eq.{_q(str(username))}&select=id,username,role,credits,status,password_hash",
             headers=headers
         )
 
@@ -268,7 +270,7 @@ def change_password():
         headers = get_supabase_headers()
         # Find user
         res = requests.get(
-            f"{SB_URL}/rest/v1/users?username=eq.{username}&select=id,username,password_hash",
+            f"{SB_URL}/rest/v1/users?username=eq.{_q(str(username))}&select=id,username,password_hash",
             headers=headers
         )
         if res.status_code != 200 or not res.json():
@@ -347,12 +349,12 @@ def get_reseller_data():
         services = services_res.json() if services_res.status_code == 200 else []
 
         # Query user credits
-        user_res = requests.get(f"{SB_URL}/rest/v1/users?id=eq.{reseller_id}", headers=headers)
+        user_res = requests.get(f"{SB_URL}/rest/v1/users?id=eq.{_q(str(reseller_id))}", headers=headers)
         user_data = user_res.json() if user_res.status_code == 200 else []
         credits = user_data[0]["credits"] if user_data else 0.0
 
         # Query subscriptions
-        subs_res = requests.get(f"{SB_URL}/rest/v1/subscriptions_log?sub_reseller_id=eq.{reseller_id}&select=*,services(service_name),xtream_panels(id,name)", headers=headers)
+        subs_res = requests.get(f"{SB_URL}/rest/v1/subscriptions_log?sub_reseller_id=eq.{_q(str(reseller_id))}&select=*,services(service_name),xtream_panels(id,name)", headers=headers)
         subs = subs_res.json() if subs_res.status_code == 200 else []
 
         return jsonify({
@@ -649,13 +651,13 @@ def create_line():
         headers = get_supabase_headers()
         
         # Verify user role and status
-        user_res = requests.get(f"{SB_URL}/rest/v1/users?id=eq.{reseller_id}", headers=headers)
+        user_res = requests.get(f"{SB_URL}/rest/v1/users?id=eq.{_q(str(reseller_id))}", headers=headers)
         if user_res.status_code != 200 or not user_res.json():
             return jsonify({"success": False, "error": "المستخدم غير موجود بالنظام"}), 404
         user = user_res.json()[0]
 
         # Fetch Service Details
-        service_res = requests.get(f"{SB_URL}/rest/v1/services?id=eq.{service_id}&select=*,xtream_panels(*)", headers=headers)
+        service_res = requests.get(f"{SB_URL}/rest/v1/services?id=eq.{_q(str(service_id))}&select=*,xtream_panels(*)", headers=headers)
         if service_res.status_code != 200 or not service_res.json():
             return jsonify({"success": False, "error": "الخدمة المطلوبة غير موجودة في السيستم"}), 404
         
@@ -684,7 +686,7 @@ def create_line():
         # SECURITY: Prevent duplicate active trial
         if is_trial:
             trial_res = requests.get(
-                f"{SB_URL}/rest/v1/subscriptions_log?reseller_id=eq.{reseller_id}&status=eq.active&select=id,services(service_name)",
+                f"{SB_URL}/rest/v1/subscriptions_log?reseller_id=eq.{_q(str(reseller_id))}&status=eq.active&select=id,services(service_name)",
                 headers=headers
             )
             if trial_res.status_code == 200:
@@ -840,7 +842,7 @@ def create_line():
             if expire_date_str:
                 update_payload["expire_date"] = expire_date_str
             
-            requests.patch(f"{SB_URL}/rest/v1/subscriptions_log?id=eq.{subscription_id}", headers=headers, json=update_payload)
+            requests.patch(f"{SB_URL}/rest/v1/subscriptions_log?id=eq.{_q(str(subscription_id))}", headers=headers, json=update_payload)
             stream_url = panel.get('stream_url') or panel.get('domain_url', '').split('/userpanel')[0].rstrip('/')
             return jsonify({
                 "success": True, 
@@ -879,7 +881,7 @@ def renew_line():
     try:
         headers = get_supabase_headers()
         # Fetch Service Details
-        service_res = requests.get(f"{SB_URL}/rest/v1/services?id=eq.{service_id}&select=*,xtream_panels(*)", headers=headers)
+        service_res = requests.get(f"{SB_URL}/rest/v1/services?id=eq.{_q(str(service_id))}&select=*,xtream_panels(*)", headers=headers)
         if service_res.status_code != 200 or not service_res.json():
             return jsonify({"success": False, "error": "الخدمة المطلوبة غير موجودة في السيستم"}), 404
         
@@ -897,7 +899,7 @@ def renew_line():
         api_password = panel['api_password']
 
         # Fetch current sub details to get username
-        sub_res = requests.get(f"{SB_URL}/rest/v1/subscriptions_log?id=eq.{subscription_id}", headers=headers)
+        sub_res = requests.get(f"{SB_URL}/rest/v1/subscriptions_log?id=eq.{_q(str(subscription_id))}", headers=headers)
         if sub_res.status_code != 200 or not sub_res.json():
             return jsonify({"success": False, "error": "الاشتراك غير موجود بالسجلات"}), 404
         line_username = sub_res.json()[0]['line_username']
@@ -950,7 +952,7 @@ def renew_line():
                         if new_exp_ts:
                             try:
                                 final_date = datetime.utcfromtimestamp(int(new_exp_ts)).strftime('%Y-%m-%d %H:%M:%S')
-                                requests.patch(f"{SB_URL}/rest/v1/subscriptions_log?id=eq.{subscription_id}", headers=headers, json={"expire_date": final_date})
+                                requests.patch(f"{SB_URL}/rest/v1/subscriptions_log?id=eq.{_q(str(subscription_id))}", headers=headers, json={"expire_date": final_date})
                             except:
                                 pass
                         
@@ -1017,13 +1019,13 @@ def manage_status():
         headers = get_supabase_headers()
         
         # Verify permission: Admin can edit anything. Reseller can only edit their own subscriptions.
-        user_res = requests.get(f"{SB_URL}/rest/v1/users?id=eq.{reseller_id}", headers=headers)
+        user_res = requests.get(f"{SB_URL}/rest/v1/users?id=eq.{_q(str(reseller_id))}", headers=headers)
         if user_res.status_code != 200 or not user_res.json():
             return jsonify({"success": False, "error": "المستخدم غير مصرح له بالنظام"}), 401
         user = user_res.json()[0]
 
         # Fetch subscription, service, and panel info
-        sub_res = requests.get(f"{SB_URL}/rest/v1/subscriptions_log?id=eq.{subscription_id}&select=*,xtream_panels(*)", headers=headers)
+        sub_res = requests.get(f"{SB_URL}/rest/v1/subscriptions_log?id=eq.{_q(str(subscription_id))}&select=*,xtream_panels(*)", headers=headers)
         if sub_res.status_code != 200 or not sub_res.json():
             return jsonify({"success": False, "error": "الاشتراك غير موجود بالسجلات"}), 404
         
@@ -1058,10 +1060,10 @@ def manage_status():
             if xtream_res.status_code == 200:
                 # Update status in local Supabase DB
                 if action == 'delete':
-                    requests.delete(f"{SB_URL}/rest/v1/subscriptions_log?id=eq.{subscription_id}", headers=headers)
+                    requests.delete(f"{SB_URL}/rest/v1/subscriptions_log?id=eq.{_q(str(subscription_id))}", headers=headers)
                 else:
                     new_status = 'active' if action == 'enable' else 'disabled'
-                    requests.patch(f"{SB_URL}/rest/v1/subscriptions_log?id=eq.{subscription_id}", headers=headers, json={"status": new_status})
+                    requests.patch(f"{SB_URL}/rest/v1/subscriptions_log?id=eq.{_q(str(subscription_id))}", headers=headers, json={"status": new_status})
 
                 return jsonify({"success": True, "message": f"تم تنفيذ عملية ({action}) بنجاح على السيرفر وفي قاعدة البيانات."})
             else:
@@ -1181,7 +1183,7 @@ def update_code_category():
                 "name": name,
                 "price": cost_credits
             }
-            res = requests.patch(f"{SB_URL}/rest/v1/code_categories?id=eq.{category_id}", headers=headers, json=payload)
+            res = requests.patch(f"{SB_URL}/rest/v1/code_categories?id=eq.{_q(str(category_id))}", headers=headers, json=payload)
             if res.status_code not in [200, 201, 204]:
                 return jsonify({"success": False, "error": f"Failed to update category: {res.text}"}), 400
             return jsonify({"success": True})
@@ -1207,7 +1209,7 @@ def delete_code_category():
     if SB_KEY:
         try:
             headers = get_supabase_headers()
-            res = requests.delete(f"{SB_URL}/rest/v1/code_categories?id=eq.{category_id}", headers=headers)
+            res = requests.delete(f"{SB_URL}/rest/v1/code_categories?id=eq.{_q(str(category_id))}", headers=headers)
             if res.status_code not in [200, 204]:
                 return jsonify({"success": False, "error": f"Failed to delete category: {res.text}"}), 400
             return jsonify({"success": True})
@@ -1230,7 +1232,7 @@ def list_codes_by_category():
             headers = get_supabase_headers()
             # Get codes with seller username via join
             res = requests.get(
-                f"{SB_URL}/rest/v1/active_codes?category_id=eq.{category_id}&select=id,code,status,sold_to,sold_at&order=id.asc",
+                f"{SB_URL}/rest/v1/active_codes?category_id=eq.{_q(str(category_id))}&select=id,code,status,sold_to,sold_at&order=id.asc",
                 headers=headers
             )
             if res.status_code != 200:
@@ -1325,7 +1327,7 @@ def delete_single_code():
     if SB_KEY:
         try:
             headers = get_supabase_headers()
-            res = requests.delete(f"{SB_URL}/rest/v1/active_codes?id=eq.{code_id}", headers=headers)
+            res = requests.delete(f"{SB_URL}/rest/v1/active_codes?id=eq.{_q(str(code_id))}", headers=headers)
             if res.status_code not in [200, 204]:
                 return jsonify({"success": False, "error": res.text}), 400
             return jsonify({"success": True})
@@ -1409,12 +1411,12 @@ def buy_code():
     if SB_KEY:
         try:
             headers = get_supabase_headers()
-            user_res = requests.get(f"{SB_URL}/rest/v1/users?id=eq.{reseller_id}", headers=headers)
+            user_res = requests.get(f"{SB_URL}/rest/v1/users?id=eq.{_q(str(reseller_id))}", headers=headers)
             if user_res.status_code != 200 or not user_res.json():
                 return jsonify({"success": False, "error": "المستخدم غير موجود بالنظام"}), 404
             user = user_res.json()[0]
             
-            cat_res = requests.get(f"{SB_URL}/rest/v1/code_categories?id=eq.{category_id}", headers=headers)
+            cat_res = requests.get(f"{SB_URL}/rest/v1/code_categories?id=eq.{_q(str(category_id))}", headers=headers)
             if cat_res.status_code != 200 or not cat_res.json():
                 return jsonify({"success": False, "error": "الفئة غير موجودة بالسيستم"}), 404
             cat = cat_res.json()[0]
@@ -1424,7 +1426,7 @@ def buy_code():
             if user["role"] == "reseller" and current_credits < cost_credits:
                 return jsonify({"success": False, "error": "رصيد الج.م لديك غير كافٍ لشراء هذا الكود!"}), 400
                 
-            codes_res = requests.get(f"{SB_URL}/rest/v1/active_codes?category_id=eq.{category_id}&status=eq.active&limit=1", headers=headers)
+            codes_res = requests.get(f"{SB_URL}/rest/v1/active_codes?category_id=eq.{_q(str(category_id))}&status=eq.active&limit=1", headers=headers)
             if codes_res.status_code != 200 or not codes_res.json():
                 return jsonify({"success": False, "error": "عذراً! نفذت الأكواد المتاحة في هذا القسم حالياً."}), 400
             
@@ -1436,16 +1438,16 @@ def buy_code():
                 "sold_to": reseller_id,
                 "sold_at": datetime.now().isoformat()
             }
-            update_res = requests.patch(f"{SB_URL}/rest/v1/active_codes?id=eq.{code_id}", headers=headers, json=update_code_payload)
+            update_res = requests.patch(f"{SB_URL}/rest/v1/active_codes?id=eq.{_q(str(code_id))}", headers=headers, json=update_code_payload)
             if update_res.status_code not in [200, 201, 204]:
                 return jsonify({"success": False, "error": "فشل حجز الكود"}), 400
                 
             new_credits = current_credits
             if user["role"] == "reseller":
                 new_credits = current_credits - cost_credits
-                update_user_res = requests.patch(f"{SB_URL}/rest/v1/users?id=eq.{reseller_id}", headers=headers, json={"credits": new_credits})
+                update_user_res = requests.patch(f"{SB_URL}/rest/v1/users?id=eq.{_q(str(reseller_id))}", headers=headers, json={"credits": new_credits})
                 if update_user_res.status_code not in [200, 201, 204]:
-                    requests.patch(f"{SB_URL}/rest/v1/active_codes?id=eq.{code_id}", headers=headers, json={"status": "active", "sold_to": None, "sold_at": None})
+                    requests.patch(f"{SB_URL}/rest/v1/active_codes?id=eq.{_q(str(code_id))}", headers=headers, json={"status": "active", "sold_to": None, "sold_at": None})
                     return jsonify({"success": False, "error": "فشل خصم الرصيد"}), 400
                   
             log_payload = {
@@ -1529,7 +1531,7 @@ def get_codes_history():
                     reseller_uuid = reseller_id
                 else:
                     user_res = requests.get(
-                        f"{SB_URL}/rest/v1/users?username=eq.{reseller_id}&select=id",
+                        f"{SB_URL}/rest/v1/users?username=eq.{_q(str(reseller_id))}&select=id",
                         headers=headers
                     )
                     if user_res.status_code == 200 and user_res.json():
@@ -1537,7 +1539,7 @@ def get_codes_history():
             
             query = "select=*,code_categories(name)"
             if reseller_uuid:
-                url = f"{SB_URL}/rest/v1/active_codes?status=eq.sold&sold_to=eq.{reseller_uuid}&{query}&order=sold_at.desc"
+                url = f"{SB_URL}/rest/v1/active_codes?status=eq.sold&sold_to=eq.{_q(str(reseller_uuid))}&{query}&order=sold_at.desc"
             elif reseller_id and not reseller_uuid:
                 # UUID/username not found - return empty history gracefully
                 return jsonify({"success": True, "history": []})
@@ -1623,7 +1625,7 @@ def handle_panels():
                     payload["stream_url"] = stream_url
                 
                 if panel_id:
-                    res = requests.patch(f"{SB_URL}/rest/v1/xtream_panels?id=eq.{panel_id}", headers=headers, json=payload)
+                    res = requests.patch(f"{SB_URL}/rest/v1/xtream_panels?id=eq.{_q(str(panel_id))}", headers=headers, json=payload)
                     if res.status_code not in [200, 201, 204]:
                         return jsonify({"success": False, "error": res.text}), 400
                     payload['id'] = panel_id
@@ -1684,7 +1686,7 @@ def delete_panel(panel_id):
     if SB_KEY:
         try:
             headers = get_supabase_headers()
-            res = requests.delete(f"{SB_URL}/rest/v1/xtream_panels?id=eq.{panel_id}", headers=headers)
+            res = requests.delete(f"{SB_URL}/rest/v1/xtream_panels?id=eq.{_q(str(panel_id))}", headers=headers)
             if res.status_code not in [200, 201, 204]:
                 return jsonify({"success": False, "error": res.text}), 400
             return jsonify({"success": True, "message": "تم حذف السيرفر بنجاح"})
@@ -1708,16 +1710,45 @@ def resolve_user_id(user_id):
     except ValueError:
         try:
             headers = get_supabase_headers()
-            res = requests.get(f"{SB_URL}/rest/v1/users?username=eq.{user_id}", headers=headers)
+            res = requests.get(f"{SB_URL}/rest/v1/users?username=eq.{_q(str(user_id))}", headers=headers)
             if res.status_code == 200 and res.json():
                 return res.json()[0]['id']
         except Exception as e:
             print("resolve_user_id error:", e)
         return user_id
 
+def get_verified_user():
+    user_id = request.headers.get('X-User-Id')
+    if not user_id:
+        return None
+    if SB_KEY:
+        try:
+            import urllib.parse
+            encoded_id = urllib.parse.quote(str(user_id))
+            headers = get_supabase_headers()
+            res = requests.get(f"{SB_URL}/rest/v1/users?id=eq.{_q(str(encoded_id))}&select=id,role,status", headers=headers)
+            if res.status_code == 200 and res.json():
+                user = res.json()[0]
+                if user.get('status') == 'active':
+                    return user
+        except Exception as e:
+            print("[!] get_verified_user check failed:", e)
+    else:
+        db = read_db()
+        user = next((u for u in db.get("users", []) if u["id"] == user_id), None)
+        if user and user.get('status') == 'active':
+            return user
+    return None
+
+def is_admin_request():
+    user = get_verified_user()
+    return user is not None and user.get('role') == 'admin'
+
 # 1. Admin Resellers Management
 @app.route('/api/admin/resellers', methods=['GET'])
 def admin_get_resellers():
+    if not is_admin_request():
+        return jsonify({"success": False, "error": "غير مصرح بالدخول لغير المسؤول"}), 403
     if not SB_KEY:
         db = read_db()
         resellers = [u for u in db.get("users", []) if u.get("role") == "reseller"]
@@ -1733,6 +1764,8 @@ def admin_get_resellers():
 
 @app.route('/api/admin/resellers', methods=['POST'])
 def admin_create_reseller():
+    if not is_admin_request():
+        return jsonify({"success": False, "error": "غير مصرح بالدخول لغير المسؤول"}), 403
     data = request.json
     username = data.get("username")
     password_plain = data.get("password")
@@ -1794,6 +1827,8 @@ def admin_create_reseller():
 
 @app.route('/api/admin/resellers/update', methods=['POST'])
 def admin_update_reseller():
+    if not is_admin_request():
+        return jsonify({"success": False, "error": "غير مصرح بالدخول لغير المسؤول"}), 403
     data = request.json
     reseller_id = data.get("id")
     new_username = data.get("username")
@@ -1842,7 +1877,7 @@ def admin_update_reseller():
         if not payload:
             return jsonify({"success": True, "message": "لا توجد تعديلات لتحديثها"})
 
-        up_res = requests.patch(f"{SB_URL}/rest/v1/users?id=eq.{resolved_id}", headers=headers, json=payload)
+        up_res = requests.patch(f"{SB_URL}/rest/v1/users?id=eq.{_q(str(resolved_id))}", headers=headers, json=payload)
         if up_res.status_code not in [200, 204]:
             return jsonify({"success": False, "error": up_res.text}), 400
 
@@ -1852,6 +1887,8 @@ def admin_update_reseller():
 
 @app.route('/api/admin/resellers/transfer', methods=['POST'])
 def admin_transfer_credits():
+    if not is_admin_request():
+        return jsonify({"success": False, "error": "غير مصرح بالدخول لغير المسؤول"}), 403
     data = request.json
     reseller_id = data.get("resellerId")
     amount = float(data.get("amount", 0.0))
@@ -1869,14 +1906,14 @@ def admin_transfer_credits():
         headers = get_supabase_headers()
         resolved_id = resolve_user_id(reseller_id)
         
-        user_res = requests.get(f"{SB_URL}/rest/v1/users?id=eq.{resolved_id}", headers=headers)
+        user_res = requests.get(f"{SB_URL}/rest/v1/users?id=eq.{_q(str(resolved_id))}", headers=headers)
         if user_res.status_code != 200 or not user_res.json():
             return jsonify({"success": False, "error": "الموزع غير موجود"}), 404
             
         user = user_res.json()[0]
         new_credits = float(user["credits"]) + amount
         
-        up_res = requests.patch(f"{SB_URL}/rest/v1/users?id=eq.{resolved_id}", headers=headers, json={"credits": new_credits})
+        up_res = requests.patch(f"{SB_URL}/rest/v1/users?id=eq.{_q(str(resolved_id))}", headers=headers, json={"credits": new_credits})
         if up_res.status_code not in [200, 204]:
             return jsonify({"success": False, "error": up_res.text}), 400
             
@@ -1894,6 +1931,8 @@ def admin_transfer_credits():
 
 @app.route('/api/admin/resellers/status', methods=['POST'])
 def admin_toggle_reseller_status():
+    if not is_admin_request():
+        return jsonify({"success": False, "error": "غير مصرح بالدخول لغير المسؤول"}), 403
     data = request.json
     reseller_id = data.get("resellerId")
     status = data.get("status")
@@ -1910,7 +1949,7 @@ def admin_toggle_reseller_status():
     try:
         headers = get_supabase_headers()
         resolved_id = resolve_user_id(reseller_id)
-        up_res = requests.patch(f"{SB_URL}/rest/v1/users?id=eq.{resolved_id}", headers=headers, json={"status": status})
+        up_res = requests.patch(f"{SB_URL}/rest/v1/users?id=eq.{_q(str(resolved_id))}", headers=headers, json={"status": status})
         if up_res.status_code not in [200, 204]:
             return jsonify({"success": False, "error": up_res.text}), 400
         return jsonify({"success": True})
@@ -1919,6 +1958,8 @@ def admin_toggle_reseller_status():
 
 @app.route('/api/admin/resellers/delete', methods=['POST'])
 def admin_delete_reseller():
+    if not is_admin_request():
+        return jsonify({"success": False, "error": "غير مصرح بالدخول لغير المسؤول"}), 403
     data = request.json
     reseller_id = data.get("resellerId")
     
@@ -1931,7 +1972,7 @@ def admin_delete_reseller():
     try:
         headers = get_supabase_headers()
         resolved_id = resolve_user_id(reseller_id)
-        del_res = requests.delete(f"{SB_URL}/rest/v1/users?id=eq.{resolved_id}", headers=headers)
+        del_res = requests.delete(f"{SB_URL}/rest/v1/users?id=eq.{_q(str(resolved_id))}", headers=headers)
         if del_res.status_code not in [200, 204]:
             return jsonify({"success": False, "error": del_res.text}), 400
         return jsonify({"success": True})
@@ -1941,6 +1982,8 @@ def admin_delete_reseller():
 # 2. Admin Services Management
 @app.route('/api/admin/services', methods=['GET'])
 def admin_get_services():
+    if not is_admin_request():
+        return jsonify({"success": False, "error": "غير مصرح بالدخول لغير المسؤول"}), 403
     if not SB_KEY:
         db = read_db()
         return jsonify(db.get("services", []))
@@ -1955,6 +1998,8 @@ def admin_get_services():
 
 @app.route('/api/admin/services', methods=['POST'])
 def admin_add_service():
+    if not is_admin_request():
+        return jsonify({"success": False, "error": "غير مصرح بالدخول لغير المسؤول"}), 403
     data = request.json
     if not SB_KEY:
         db = read_db()
@@ -1980,6 +2025,8 @@ def admin_add_service():
 
 @app.route('/api/admin/services/delete', methods=['POST'])
 def admin_delete_service():
+    if not is_admin_request():
+        return jsonify({"success": False, "error": "غير مصرح بالدخول لغير المسؤول"}), 403
     data = request.json
     service_id = data.get("serviceId")
     
@@ -1991,7 +2038,7 @@ def admin_delete_service():
         
     try:
         headers = get_supabase_headers()
-        res = requests.delete(f"{SB_URL}/rest/v1/services?id=eq.{service_id}", headers=headers)
+        res = requests.delete(f"{SB_URL}/rest/v1/services?id=eq.{_q(str(service_id))}", headers=headers)
         if res.status_code not in [200, 204]:
             return jsonify({"success": False, "error": res.text}), 400
         return jsonify({"success": True})
@@ -2000,6 +2047,8 @@ def admin_delete_service():
 
 @app.route('/api/admin/services/update_price', methods=['POST'])
 def admin_update_service_price():
+    if not is_admin_request():
+        return jsonify({"success": False, "error": "غير مصرح بالدخول لغير المسؤول"}), 403
     data = request.json or {}
     service_id = data.get("serviceId")
     new_price = data.get("newPrice")
@@ -2030,7 +2079,7 @@ def admin_update_service_price():
     try:
         headers = get_supabase_headers()
         res = requests.patch(
-            f"{SB_URL}/rest/v1/services?id=eq.{service_id}",
+            f"{SB_URL}/rest/v1/services?id=eq.{_q(str(service_id))}",
             headers=headers,
             json={"cost_credits": new_price}
         )
@@ -2044,6 +2093,8 @@ def admin_update_service_price():
 # 3. Admin Logs
 @app.route('/api/admin/logs', methods=['GET'])
 def admin_get_logs():
+    if not is_admin_request():
+        return jsonify({"success": False, "error": "غير مصرح بالدخول لغير المسؤول"}), 403
     if not SB_KEY:
         db = read_db()
         return jsonify({
@@ -2223,21 +2274,21 @@ def get_reseller_details():
         headers = get_supabase_headers()
         
         # Fetch user
-        user_res = requests.get(f"{SB_URL}/rest/v1/users?id=eq.{reseller_id}", headers=headers)
+        user_res = requests.get(f"{SB_URL}/rest/v1/users?id=eq.{_q(str(reseller_id))}", headers=headers)
         if user_res.status_code != 200 or not user_res.json():
             return jsonify({"error": "Reseller not found"}), 404
         user = user_res.json()[0]
         
         # Fetch subscriptions
-        subs_res = requests.get(f"{SB_URL}/rest/v1/subscriptions_log?sub_reseller_id=eq.{reseller_id}&select=*,xtream_panels(name),services(service_name)&order=created_at.desc", headers=headers)
+        subs_res = requests.get(f"{SB_URL}/rest/v1/subscriptions_log?sub_reseller_id=eq.{_q(str(reseller_id))}&select=*,xtream_panels(name),services(service_name)&order=created_at.desc", headers=headers)
         subs = subs_res.json() if subs_res.status_code == 200 else []
         
         # Fetch transactions
-        txs_res = requests.get(f"{SB_URL}/rest/v1/credit_transactions?sub_reseller_id=eq.{reseller_id}&select=*&order=created_at.desc", headers=headers)
+        txs_res = requests.get(f"{SB_URL}/rest/v1/credit_transactions?sub_reseller_id=eq.{_q(str(reseller_id))}&select=*&order=created_at.desc", headers=headers)
         txs = txs_res.json() if txs_res.status_code == 200 else []
         
         # Fetch purchased codes
-        codes_res = requests.get(f"{SB_URL}/rest/v1/active_codes?sold_to=eq.{reseller_id}&select=*,code_categories(name)&order=sold_at.desc", headers=headers)
+        codes_res = requests.get(f"{SB_URL}/rest/v1/active_codes?sold_to=eq.{_q(str(reseller_id))}&select=*,code_categories(name)&order=sold_at.desc", headers=headers)
         codes = codes_res.json() if codes_res.status_code == 200 else []
         
         return jsonify({

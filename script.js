@@ -3,6 +3,23 @@
  * Structured for local file protocol and server proxy compatibility
  */
 
+// --- GLOBAL FETCH INTERCEPTOR FOR SECURITY ---
+const originalFetch = window.fetch;
+window.fetch = async function(url, options = {}) {
+    if (url.startsWith('/') || url.includes(window.location.host)) {
+        options.headers = options.headers || {};
+        const userId = localStorage.getItem('session_user_id');
+        const role = localStorage.getItem('session_role');
+        if (userId) {
+            options.headers['X-User-Id'] = userId;
+        }
+        if (role) {
+            options.headers['X-User-Role'] = role;
+        }
+    }
+    return originalFetch(url, options);
+};
+
 // --- GLOBAL WINDOW SIDEBAR & THEME CONTROLS ---
 
 window.toggleDesktopSidebar = function() {
