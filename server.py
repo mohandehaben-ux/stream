@@ -10,7 +10,7 @@ import urllib.parse as _urlparse
 _q = _urlparse.quote
 
 app = Flask(__name__, static_url_path='', static_folder='.')
-CORS(app)
+CORS(app, resources={r'/api/*': {'origins': '*', 'allow_headers': ['Content-Type', 'X-User-Id', 'X-User-Role']}})
 
 # --- SECURITY: Rate Limiting Store ---
 # Tracks recent create requests per reseller: { reseller_id: [timestamp, ...] }
@@ -240,7 +240,8 @@ def login():
         }})
 
     except Exception as e:
-        return jsonify({"success": False, "error": f"خطأ داخلي بالخادم: {str(e)}"}), 500
+        print(f"[!] Internal error: {str(e)}")
+        return jsonify({"success": False, "error": "خطأ داخلي بالخادم، يرجى المحاولة لاحقاً."}), 500
 
 @app.route('/api/auth/change-password', methods=['POST'])
 def change_password():
@@ -304,7 +305,8 @@ def change_password():
         return jsonify({"success": True, "message": "تم تغيير كلمة المرور بنجاح ✅"})
 
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        print(f"[!] Internal error: {str(e)}")
+        return jsonify({"success": False, "error": "خطأ داخلي بالخادم، يرجى المحاولة لاحقاً."}), 500
 
 
 # 1b. Reseller Data Load Endpoint
@@ -313,6 +315,11 @@ def get_reseller_data():
     reseller_id = request.args.get('reseller_id')
     if not reseller_id:
         return jsonify({"success": False, "error": "reseller_id is required"}), 400
+    # Ownership validation: reseller can only see their own data
+    requester_id = request.headers.get('X-User-Id')
+    requester_role = request.headers.get('X-User-Role', '')
+    if requester_role != 'admin' and requester_id and requester_id != reseller_id:
+        return jsonify({"success": False, "error": "غير مصرح لك بالاطلاع على بيانات موزع آخر"}), 403
 
     if not SB_KEY:
         db = read_db()
@@ -375,7 +382,8 @@ def get_reseller_data():
             } for s in subs]
         })
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        print(f"[!] Internal error: {str(e)}")
+        return jsonify({"success": False, "error": "خطأ داخلي بالخادم، يرجى المحاولة لاحقاً."}), 500
 
 
 # 2. Test Connection to Xtream Codes Panel
@@ -645,7 +653,8 @@ def create_line():
                 return jsonify({"success": False, "error": f"فشل السيرفر في إضافة المشترك: {error_msg}"}), 400
                 
         except Exception as e:
-            return jsonify({"success": False, "error": f"خطأ داخلي بالخادم المحلي: {str(e)}"}), 500
+            print(f"[!] Internal error: {str(e)}")
+            return jsonify({"success": False, "error": "خطأ داخلي بالخادم، يرجى المحاولة لاحقاً."}), 500
 
     try:
         headers = get_supabase_headers()
@@ -863,7 +872,8 @@ def create_line():
             return jsonify({"success": False, "error": f"فشل السيرفر في إنشاء الحساب: {error_msg}"}), 400
 
     except Exception as e:
-        return jsonify({"success": False, "error": f"خطأ داخلي بالخادم: {str(e)}"}), 500
+        print(f"[!] Internal error: {str(e)}")
+        return jsonify({"success": False, "error": "خطأ داخلي بالخادم، يرجى المحاولة لاحقاً."}), 500
 
 
 # 4. Renew / Extend Xtream Codes Line
@@ -1001,7 +1011,8 @@ def renew_line():
             return jsonify({"success": False, "error": f"انتهى وقت الاتصال باللوحة للتجديد. تم استرجاع ج.مك تلقائياً."}), 504
 
     except Exception as e:
-        return jsonify({"success": False, "error": f"خطأ داخلي بالخادم: {str(e)}"}), 500
+        print(f"[!] Internal error: {str(e)}")
+        return jsonify({"success": False, "error": "خطأ داخلي بالخادم، يرجى المحاولة لاحقاً."}), 500
 
 
 # 5. Enable / Disable / Delete Line
@@ -1075,13 +1086,16 @@ def manage_status():
             return jsonify({"success": False, "error": f"فشل الاتصال بالسيرفر لتنفيذ عملية ({act_name}) بسبب مهلة الشبكة."}), 504
 
     except Exception as e:
-        return jsonify({"success": False, "error": f"خطأ داخلي بالخادم: {str(e)}"}), 500
+        print(f"[!] Internal error: {str(e)}")
+        return jsonify({"success": False, "error": "خطأ داخلي بالخادم، يرجى المحاولة لاحقاً."}), 500
 
 
 # --- ACTIVE CODES STORE ENDPOINTS ---
 
 @app.route('/api/codes/categories', methods=['GET', 'POST'])
 def handle_categories():
+    if not is_admin_request():
+        return jsonify({"success": False, "error": "غير مصرح بالدخول لغير المسؤول"}), 403
     import time
     if request.method == 'GET':
         if SB_KEY:
@@ -1110,7 +1124,8 @@ def handle_categories():
                     })
                 return jsonify({"success": True, "categories": categories})
             except Exception as e:
-                return jsonify({"success": False, "error": str(e)}), 500
+                print(f"[!] Internal error: {str(e)}")
+                return jsonify({"success": False, "error": "خطأ داخلي بالخادم، يرجى المحاولة لاحقاً."}), 500
         else:
             db = read_db()
             categories = []
@@ -1153,7 +1168,8 @@ def handle_categories():
                     }
                 })
             except Exception as e:
-                return jsonify({"success": False, "error": str(e)}), 500
+                print(f"[!] Internal error: {str(e)}")
+                return jsonify({"success": False, "error": "خطأ داخلي بالخادم، يرجى المحاولة لاحقاً."}), 500
         else:
             db = read_db()
             cat_id = int(time.time())
@@ -1168,6 +1184,8 @@ def handle_categories():
 
 @app.route('/api/codes/categories/update', methods=['POST'])
 def update_code_category():
+    if not is_admin_request():
+        return jsonify({"success": False, "error": "غير مصرح بالدخول لغير المسؤول"}), 403
     data = request.json
     category_id = data.get('category_id')
     name = data.get('name', '').strip()
@@ -1188,7 +1206,8 @@ def update_code_category():
                 return jsonify({"success": False, "error": f"Failed to update category: {res.text}"}), 400
             return jsonify({"success": True})
         except Exception as e:
-            return jsonify({"success": False, "error": str(e)}), 500
+            print(f"[!] Internal error: {str(e)}")
+            return jsonify({"success": False, "error": "خطأ داخلي بالخادم، يرجى المحاولة لاحقاً."}), 500
     else:
         db = read_db()
         for c in db.get("code_categories", []):
@@ -1201,6 +1220,8 @@ def update_code_category():
 
 @app.route('/api/codes/categories/delete', methods=['POST'])
 def delete_code_category():
+    if not is_admin_request():
+        return jsonify({"success": False, "error": "غير مصرح بالدخول لغير المسؤول"}), 403
     data = request.json
     category_id = data.get('category_id')
     if not category_id:
@@ -1214,7 +1235,8 @@ def delete_code_category():
                 return jsonify({"success": False, "error": f"Failed to delete category: {res.text}"}), 400
             return jsonify({"success": True})
         except Exception as e:
-            return jsonify({"success": False, "error": str(e)}), 500
+            print(f"[!] Internal error: {str(e)}")
+            return jsonify({"success": False, "error": "خطأ داخلي بالخادم، يرجى المحاولة لاحقاً."}), 500
     else:
         db = read_db()
         db["code_categories"] = [c for c in db.get("code_categories", []) if str(c["id"]) != str(category_id)]
@@ -1236,7 +1258,8 @@ def list_codes_by_category():
                 headers=headers
             )
             if res.status_code != 200:
-                return jsonify({"success": False, "error": res.text}), 400
+                print(f"[!] API error (res.text): {res.text}")
+                return jsonify({"success": False, "error": "حدث خطأ في معالجة الطلب، يرجى المحاولة مجدداً."}), 400
             codes = res.json()
             
             # Enrich sold codes with username and transaction info
@@ -1289,7 +1312,8 @@ def list_codes_by_category():
             
             return jsonify({"success": True, "codes": codes})
         except Exception as e:
-            return jsonify({"success": False, "error": str(e)}), 500
+            print(f"[!] Internal error: {str(e)}")
+            return jsonify({"success": False, "error": "خطأ داخلي بالخادم، يرجى المحاولة لاحقاً."}), 500
     else:
         db = read_db()
         codes = [c for c in db.get("active_codes", []) if str(c.get("category_id")) == str(category_id)]
@@ -1319,6 +1343,8 @@ def list_codes_by_category():
 
 @app.route('/api/codes/delete_code', methods=['POST'])
 def delete_single_code():
+    if not is_admin_request():
+        return jsonify({"success": False, "error": "غير مصرح بالدخول لغير المسؤول"}), 403
     data = request.json
     code_id = data.get('code_id')
     if not code_id:
@@ -1329,10 +1355,12 @@ def delete_single_code():
             headers = get_supabase_headers()
             res = requests.delete(f"{SB_URL}/rest/v1/active_codes?id=eq.{_q(str(code_id))}", headers=headers)
             if res.status_code not in [200, 204]:
-                return jsonify({"success": False, "error": res.text}), 400
+                print(f"[!] API error (res.text): {res.text}")
+                return jsonify({"success": False, "error": "حدث خطأ في معالجة الطلب، يرجى المحاولة مجدداً."}), 400
             return jsonify({"success": True})
         except Exception as e:
-            return jsonify({"success": False, "error": str(e)}), 500
+            print(f"[!] Internal error: {str(e)}")
+            return jsonify({"success": False, "error": "خطأ داخلي بالخادم، يرجى المحاولة لاحقاً."}), 500
     else:
         db = read_db()
         db["active_codes"] = [c for c in db.get("active_codes", []) if str(c.get("id")) != str(code_id)]
@@ -1341,6 +1369,8 @@ def delete_single_code():
 
 @app.route('/api/codes/upload', methods=['POST'])
 def upload_codes():
+    if not is_admin_request():
+        return jsonify({"success": False, "error": "غير مصرح بالدخول لغير المسؤول"}), 403
     data = request.json
     category_id = data.get('category_id')
     codes_str = data.get('codes', '').strip()
@@ -1375,7 +1405,8 @@ def upload_codes():
             
             return jsonify({"success": True, "message": f"تم بنجاح رفع {added} كود جديد لهذه الفئة!"})
         except Exception as e:
-            return jsonify({"success": False, "error": str(e)}), 500
+            print(f"[!] Internal error: {str(e)}")
+            return jsonify({"success": False, "error": "خطأ داخلي بالخادم، يرجى المحاولة لاحقاً."}), 500
     else:
         db = read_db()
         cat = next((c for c in db.get("code_categories", []) if str(c["id"]) == str(category_id)), None)
@@ -1468,7 +1499,8 @@ def buy_code():
                 "credits_remaining": new_credits
             })
         except Exception as e:
-            return jsonify({"success": False, "error": str(e)}), 500
+            print(f"[!] Internal error: {str(e)}")
+            return jsonify({"success": False, "error": "خطأ داخلي بالخادم، يرجى المحاولة لاحقاً."}), 500
     else:
         db = read_db()
         user = next((u for u in db["users"] if u["id"] == reseller_id), None)
@@ -1560,7 +1592,8 @@ def get_codes_history():
                 })
             return jsonify({"success": True, "history": history})
         except Exception as e:
-            return jsonify({"success": False, "error": str(e)}), 500
+            print(f"[!] Internal error: {str(e)}")
+            return jsonify({"success": False, "error": "خطأ داخلي بالخادم، يرجى المحاولة لاحقاً."}), 500
     else:
         db = read_db()
         sold_codes = [c for c in db.get("active_codes", []) if c["status"] == "sold"]
@@ -1583,16 +1616,20 @@ def get_codes_history():
 
 @app.route('/api/panels', methods=['GET', 'POST'])
 def handle_panels():
+    if not is_admin_request():
+        return jsonify({"success": False, "error": "غير مصرح بالدخول لغير المسؤول"}), 403
     if request.method == 'GET':
         if SB_KEY:
             try:
                 headers = get_supabase_headers()
                 res = requests.get(f"{SB_URL}/rest/v1/xtream_panels?select=*&order=id.asc", headers=headers)
                 if res.status_code != 200:
-                    return jsonify({"success": False, "error": res.text}), 400
+                    print(f"[!] API error (res.text): {res.text}")
+                    return jsonify({"success": False, "error": "حدث خطأ في معالجة الطلب، يرجى المحاولة مجدداً."}), 400
                 return jsonify({"success": True, "panels": res.json()})
             except Exception as e:
-                return jsonify({"success": False, "error": str(e)}), 500
+                print(f"[!] Internal error: {str(e)}")
+                return jsonify({"success": False, "error": "خطأ داخلي بالخادم، يرجى المحاولة لاحقاً."}), 500
         else:
             db = read_db()
             return jsonify({"success": True, "panels": db.get("xtream_panels", [])})
@@ -1627,7 +1664,8 @@ def handle_panels():
                 if panel_id:
                     res = requests.patch(f"{SB_URL}/rest/v1/xtream_panels?id=eq.{_q(str(panel_id))}", headers=headers, json=payload)
                     if res.status_code not in [200, 201, 204]:
-                        return jsonify({"success": False, "error": res.text}), 400
+                        print(f"[!] API error (res.text): {res.text}")
+                        return jsonify({"success": False, "error": "حدث خطأ في معالجة الطلب، يرجى المحاولة مجدداً."}), 400
                     payload['id'] = panel_id
                     new_panel = payload
                 else:
@@ -1637,18 +1675,21 @@ def handle_panels():
                         p_id = existing[0]['id']
                         res = requests.patch(f"{SB_URL}/rest/v1/xtream_panels?id=eq.{p_id}", headers=headers, json=payload)
                         if res.status_code not in [200, 201, 204]:
-                            return jsonify({"success": False, "error": res.text}), 400
+                            print(f"[!] API error (res.text): {res.text}")
+                            return jsonify({"success": False, "error": "حدث خطأ في معالجة الطلب، يرجى المحاولة مجدداً."}), 400
                         payload['id'] = p_id
                         new_panel = payload
                     else:
                         res = requests.post(f"{SB_URL}/rest/v1/xtream_panels", headers=headers, json=payload)
                         if res.status_code not in [200, 201]:
-                            return jsonify({"success": False, "error": res.text}), 400
+                            print(f"[!] API error (res.text): {res.text}")
+                            return jsonify({"success": False, "error": "حدث خطأ في معالجة الطلب، يرجى المحاولة مجدداً."}), 400
                         new_panel = res.json()[0] if res.json() else payload
                     
                 return jsonify({"success": True, "panel": new_panel})
             except Exception as e:
-                return jsonify({"success": False, "error": str(e)}), 500
+                print(f"[!] Internal error: {str(e)}")
+                return jsonify({"success": False, "error": "خطأ داخلي بالخادم، يرجى المحاولة لاحقاً."}), 500
         else:
             db = read_db()
             if panel_id:
@@ -1683,15 +1724,19 @@ def handle_panels():
 
 @app.route('/api/panels/delete/<int:panel_id>', methods=['POST', 'DELETE'])
 def delete_panel(panel_id):
+    if not is_admin_request():
+        return jsonify({"success": False, "error": "غير مصرح بالدخول لغير المسؤول"}), 403
     if SB_KEY:
         try:
             headers = get_supabase_headers()
             res = requests.delete(f"{SB_URL}/rest/v1/xtream_panels?id=eq.{_q(str(panel_id))}", headers=headers)
             if res.status_code not in [200, 201, 204]:
-                return jsonify({"success": False, "error": res.text}), 400
+                print(f"[!] API error (res.text): {res.text}")
+                return jsonify({"success": False, "error": "حدث خطأ في معالجة الطلب، يرجى المحاولة مجدداً."}), 400
             return jsonify({"success": True, "message": "تم حذف السيرفر بنجاح"})
         except Exception as e:
-            return jsonify({"success": False, "error": str(e)}), 500
+            print(f"[!] Internal error: {str(e)}")
+            return jsonify({"success": False, "error": "خطأ داخلي بالخادم، يرجى المحاولة لاحقاً."}), 500
     else:
         db = read_db()
         db["xtream_panels"] = [p for p in db.get("xtream_panels", []) if p["id"] != panel_id]
@@ -1757,10 +1802,12 @@ def admin_get_resellers():
         headers = get_supabase_headers()
         res = requests.get(f"{SB_URL}/rest/v1/users?role=eq.reseller&order=created_at.desc", headers=headers)
         if res.status_code != 200:
-            return jsonify({"error": res.text}), 400
+            print(f"[!] API error (res.text): {res.text}")
+            return jsonify({"success": False, "error": "حدث خطأ في معالجة الطلب، يرجى المحاولة مجدداً."}), 400
         return jsonify(res.json())
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print(f"[!] Internal error: {str(e)}")
+        return jsonify({"success": False, "error": "خطأ داخلي بالخادم، يرجى المحاولة لاحقاً."}), 500
 
 @app.route('/api/admin/resellers', methods=['POST'])
 def admin_create_reseller():
@@ -1807,7 +1854,8 @@ def admin_create_reseller():
         }
         res = requests.post(f"{SB_URL}/rest/v1/users", headers=headers, json=payload)
         if res.status_code not in [200, 201]:
-            return jsonify({"success": False, "error": res.text}), 400
+            print(f"[!] API error (res.text): {res.text}")
+            return jsonify({"success": False, "error": "حدث خطأ في معالجة الطلب، يرجى المحاولة مجدداً."}), 400
         
         user_data = res.json()
         new_user = user_data[0] if isinstance(user_data, list) and user_data else user_data
@@ -1823,7 +1871,8 @@ def admin_create_reseller():
             
         return jsonify({"success": True, "reseller": new_user})
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        print(f"[!] Internal error: {str(e)}")
+        return jsonify({"success": False, "error": "خطأ داخلي بالخادم، يرجى المحاولة لاحقاً."}), 500
 
 @app.route('/api/admin/resellers/update', methods=['POST'])
 def admin_update_reseller():
@@ -1879,11 +1928,13 @@ def admin_update_reseller():
 
         up_res = requests.patch(f"{SB_URL}/rest/v1/users?id=eq.{_q(str(resolved_id))}", headers=headers, json=payload)
         if up_res.status_code not in [200, 204]:
-            return jsonify({"success": False, "error": up_res.text}), 400
+            print(f"[!] API error (up_res.text): {up_res.text}")
+            return jsonify({"success": False, "error": "حدث خطأ في معالجة الطلب، يرجى المحاولة مجدداً."}), 400
 
         return jsonify({"success": True})
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        print(f"[!] Internal error: {str(e)}")
+        return jsonify({"success": False, "error": "خطأ داخلي بالخادم، يرجى المحاولة لاحقاً."}), 500
 
 @app.route('/api/admin/resellers/transfer', methods=['POST'])
 def admin_transfer_credits():
@@ -1915,7 +1966,8 @@ def admin_transfer_credits():
         
         up_res = requests.patch(f"{SB_URL}/rest/v1/users?id=eq.{_q(str(resolved_id))}", headers=headers, json={"credits": new_credits})
         if up_res.status_code not in [200, 204]:
-            return jsonify({"success": False, "error": up_res.text}), 400
+            print(f"[!] API error (up_res.text): {up_res.text}")
+            return jsonify({"success": False, "error": "حدث خطأ في معالجة الطلب، يرجى المحاولة مجدداً."}), 400
             
         tx_payload = {
             "sub_reseller_id": resolved_id,
@@ -1927,7 +1979,8 @@ def admin_transfer_credits():
         
         return jsonify({"success": True})
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        print(f"[!] Internal error: {str(e)}")
+        return jsonify({"success": False, "error": "خطأ داخلي بالخادم، يرجى المحاولة لاحقاً."}), 500
 
 @app.route('/api/admin/resellers/status', methods=['POST'])
 def admin_toggle_reseller_status():
@@ -1951,10 +2004,12 @@ def admin_toggle_reseller_status():
         resolved_id = resolve_user_id(reseller_id)
         up_res = requests.patch(f"{SB_URL}/rest/v1/users?id=eq.{_q(str(resolved_id))}", headers=headers, json={"status": status})
         if up_res.status_code not in [200, 204]:
-            return jsonify({"success": False, "error": up_res.text}), 400
+            print(f"[!] API error (up_res.text): {up_res.text}")
+            return jsonify({"success": False, "error": "حدث خطأ في معالجة الطلب، يرجى المحاولة مجدداً."}), 400
         return jsonify({"success": True})
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        print(f"[!] Internal error: {str(e)}")
+        return jsonify({"success": False, "error": "خطأ داخلي بالخادم، يرجى المحاولة لاحقاً."}), 500
 
 @app.route('/api/admin/resellers/delete', methods=['POST'])
 def admin_delete_reseller():
@@ -1974,10 +2029,12 @@ def admin_delete_reseller():
         resolved_id = resolve_user_id(reseller_id)
         del_res = requests.delete(f"{SB_URL}/rest/v1/users?id=eq.{_q(str(resolved_id))}", headers=headers)
         if del_res.status_code not in [200, 204]:
-            return jsonify({"success": False, "error": del_res.text}), 400
+            print(f"[!] API error (del_res.text): {del_res.text}")
+            return jsonify({"success": False, "error": "حدث خطأ في معالجة الطلب، يرجى المحاولة مجدداً."}), 400
         return jsonify({"success": True})
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        print(f"[!] Internal error: {str(e)}")
+        return jsonify({"success": False, "error": "خطأ داخلي بالخادم، يرجى المحاولة لاحقاً."}), 500
 
 # 2. Admin Services Management
 @app.route('/api/admin/services', methods=['GET'])
@@ -1991,10 +2048,12 @@ def admin_get_services():
         headers = get_supabase_headers()
         res = requests.get(f"{SB_URL}/rest/v1/services?select=*,xtream_panels(name)&order=id.asc", headers=headers)
         if res.status_code != 200:
-            return jsonify({"error": res.text}), 400
+            print(f"[!] API error (res.text): {res.text}")
+            return jsonify({"success": False, "error": "حدث خطأ في معالجة الطلب، يرجى المحاولة مجدداً."}), 400
         return jsonify(res.json())
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print(f"[!] Internal error: {str(e)}")
+        return jsonify({"success": False, "error": "خطأ داخلي بالخادم، يرجى المحاولة لاحقاً."}), 500
 
 @app.route('/api/admin/services', methods=['POST'])
 def admin_add_service():
@@ -2018,10 +2077,12 @@ def admin_add_service():
         headers = get_supabase_headers()
         res = requests.post(f"{SB_URL}/rest/v1/services", headers=headers, json=data)
         if res.status_code not in [200, 201]:
-            return jsonify({"success": False, "error": res.text}), 400
+            print(f"[!] API error (res.text): {res.text}")
+            return jsonify({"success": False, "error": "حدث خطأ في معالجة الطلب، يرجى المحاولة مجدداً."}), 400
         return jsonify({"success": True})
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        print(f"[!] Internal error: {str(e)}")
+        return jsonify({"success": False, "error": "خطأ داخلي بالخادم، يرجى المحاولة لاحقاً."}), 500
 
 @app.route('/api/admin/services/delete', methods=['POST'])
 def admin_delete_service():
@@ -2040,10 +2101,12 @@ def admin_delete_service():
         headers = get_supabase_headers()
         res = requests.delete(f"{SB_URL}/rest/v1/services?id=eq.{_q(str(service_id))}", headers=headers)
         if res.status_code not in [200, 204]:
-            return jsonify({"success": False, "error": res.text}), 400
+            print(f"[!] API error (res.text): {res.text}")
+            return jsonify({"success": False, "error": "حدث خطأ في معالجة الطلب، يرجى المحاولة مجدداً."}), 400
         return jsonify({"success": True})
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        print(f"[!] Internal error: {str(e)}")
+        return jsonify({"success": False, "error": "خطأ داخلي بالخادم، يرجى المحاولة لاحقاً."}), 500
 
 @app.route('/api/admin/services/update_price', methods=['POST'])
 def admin_update_service_price():
@@ -2084,10 +2147,12 @@ def admin_update_service_price():
             json={"cost_credits": new_price}
         )
         if res.status_code not in [200, 204]:
-            return jsonify({"success": False, "error": res.text}), 400
+            print(f"[!] API error (res.text): {res.text}")
+            return jsonify({"success": False, "error": "حدث خطأ في معالجة الطلب، يرجى المحاولة مجدداً."}), 400
         return jsonify({"success": True})
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        print(f"[!] Internal error: {str(e)}")
+        return jsonify({"success": False, "error": "خطأ داخلي بالخادم، يرجى المحاولة لاحقاً."}), 500
 
 
 # 3. Admin Logs
@@ -2120,11 +2185,14 @@ def admin_get_logs():
             "transactions": txs
         })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print(f"[!] Internal error: {str(e)}")
+        return jsonify({"success": False, "error": "خطأ داخلي بالخادم، يرجى المحاولة لاحقاً."}), 500
 
 # 4. Customers Management
 @app.route('/api/customers', methods=['GET'])
 def get_customers():
+    if not is_admin_request():
+        return jsonify({"success": False, "error": "غير مصرح بالدخول لغير المسؤول"}), 403
     table = 'iptv_customers'
     
     if not SB_KEY:
@@ -2135,13 +2203,17 @@ def get_customers():
         headers = get_supabase_headers()
         res = requests.get(f"{SB_URL}/rest/v1/{table}?select=*&order=created_at.desc", headers=headers)
         if res.status_code != 200:
-            return jsonify({"error": res.text}), 400
+            print(f"[!] API error (res.text): {res.text}")
+            return jsonify({"success": False, "error": "حدث خطأ في معالجة الطلب، يرجى المحاولة مجدداً."}), 400
         return jsonify(res.json())
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print(f"[!] Internal error: {str(e)}")
+        return jsonify({"success": False, "error": "خطأ داخلي بالخادم، يرجى المحاولة لاحقاً."}), 500
 
 @app.route('/api/customers', methods=['POST'])
 def add_customer():
+    if not is_admin_request():
+        return jsonify({"success": False, "error": "غير مصرح بالدخول لغير المسؤول"}), 403
     table = 'iptv_customers'
     data = request.json
     
@@ -2162,13 +2234,17 @@ def add_customer():
         headers = get_supabase_headers()
         res = requests.post(f"{SB_URL}/rest/v1/{table}", headers=headers, json=data)
         if res.status_code not in [200, 201]:
-            return jsonify({"success": False, "error": res.text}), 400
+            print(f"[!] API error (res.text): {res.text}")
+            return jsonify({"success": False, "error": "حدث خطأ في معالجة الطلب، يرجى المحاولة مجدداً."}), 400
         return jsonify({"success": True})
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        print(f"[!] Internal error: {str(e)}")
+        return jsonify({"success": False, "error": "خطأ داخلي بالخادم، يرجى المحاولة لاحقاً."}), 500
 
 @app.route('/api/customers/update', methods=['POST'])
 def update_customer():
+    if not is_admin_request():
+        return jsonify({"success": False, "error": "غير مصرح بالدخول لغير المسؤول"}), 403
     table = 'iptv_customers'
     data = request.json
     customer_id = data.get('id')
@@ -2187,13 +2263,17 @@ def update_customer():
         headers = get_supabase_headers()
         res = requests.patch(f"{SB_URL}/rest/v1/{table}?id=eq.{customer_id}", headers=headers, json=updates)
         if res.status_code not in [200, 204]:
-            return jsonify({"success": False, "error": res.text}), 400
+            print(f"[!] API error (res.text): {res.text}")
+            return jsonify({"success": False, "error": "حدث خطأ في معالجة الطلب، يرجى المحاولة مجدداً."}), 400
         return jsonify({"success": True})
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        print(f"[!] Internal error: {str(e)}")
+        return jsonify({"success": False, "error": "خطأ داخلي بالخادم، يرجى المحاولة لاحقاً."}), 500
 
 @app.route('/api/customers/renew', methods=['POST'])
 def renew_customer():
+    if not is_admin_request():
+        return jsonify({"success": False, "error": "غير مصرح بالدخول لغير المسؤول"}), 403
     table = 'iptv_customers'
     data = request.json
     customer_id = data.get('id')
@@ -2212,13 +2292,17 @@ def renew_customer():
         headers = get_supabase_headers()
         res = requests.patch(f"{SB_URL}/rest/v1/{table}?id=eq.{customer_id}", headers=headers, json={"expire_date": expire_date})
         if res.status_code not in [200, 204]:
-            return jsonify({"success": False, "error": res.text}), 400
+            print(f"[!] API error (res.text): {res.text}")
+            return jsonify({"success": False, "error": "حدث خطأ في معالجة الطلب، يرجى المحاولة مجدداً."}), 400
         return jsonify({"success": True})
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        print(f"[!] Internal error: {str(e)}")
+        return jsonify({"success": False, "error": "خطأ داخلي بالخادم، يرجى المحاولة لاحقاً."}), 500
 
 @app.route('/api/customers/delete', methods=['POST'])
 def delete_customer():
+    if not is_admin_request():
+        return jsonify({"success": False, "error": "غير مصرح بالدخول لغير المسؤول"}), 403
     table = 'iptv_customers'
     data = request.json
     customer_id = data.get('id')
@@ -2234,14 +2318,18 @@ def delete_customer():
         headers = get_supabase_headers()
         res = requests.delete(f"{SB_URL}/rest/v1/{table}?id=eq.{customer_id}", headers=headers)
         if res.status_code not in [200, 204]:
-            return jsonify({"success": False, "error": res.text}), 400
+            print(f"[!] API error (res.text): {res.text}")
+            return jsonify({"success": False, "error": "حدث خطأ في معالجة الطلب، يرجى المحاولة مجدداً."}), 400
         return jsonify({"success": True})
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        print(f"[!] Internal error: {str(e)}")
+        return jsonify({"success": False, "error": "خطأ داخلي بالخادم، يرجى المحاولة لاحقاً."}), 500
 
 # 5. Reseller Details for Admin Panel
 @app.route('/api/admin/reseller/details', methods=['GET'])
 def get_reseller_details():
+    if not is_admin_request():
+        return jsonify({"success": False, "error": "غير مصرح بالدخول لغير المسؤول"}), 403
     reseller_raw = request.args.get('reseller_id')
     if not reseller_raw:
         return jsonify({"error": "Missing reseller_id"}), 400
@@ -2299,7 +2387,8 @@ def get_reseller_details():
             "purchased_codes": codes
         })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print(f"[!] Internal error: {str(e)}")
+        return jsonify({"success": False, "error": "خطأ داخلي بالخادم، يرجى المحاولة لاحقاً."}), 500
 
 
 if __name__ == '__main__':

@@ -3,6 +3,18 @@
  * Structured for local file protocol and server proxy compatibility
  */
 
+// --- SECURITY: HTML Escape Utility (XSS Prevention) ---
+function escapeHtml(unsafe) {
+    if (unsafe === null || unsafe === undefined) return '';
+    return String(unsafe)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+window.escapeHtml = escapeHtml;
+
 // --- GLOBAL FETCH INTERCEPTOR FOR SECURITY ---
 const originalFetch = window.fetch;
 window.fetch = async function(url, options = {}) {
@@ -1036,9 +1048,9 @@ const App = {
         if (!list) return;
         list.innerHTML = this.state.panels.map(p => `
             <tr>
-                <td><strong>${p.name}</strong></td>
-                <td><code style="font-size:0.85rem">${p.domain_url}</code></td>
-                <td>${p.api_username}</td>
+                <td><strong>${escapeHtml(p.name)}</strong></td>
+                <td><code style="font-size:0.85rem">${escapeHtml(p.domain_url)}</code></td>
+                <td>${escapeHtml(p.api_username)}</td>
                 <td><span class="badge-status ${p.status === 'active' ? 'active' : 'inactive'}">${p.status === 'active' ? 'نشط' : 'متوقف'}</span></td>
                 <td>
                     <div class="action-row-btns">
@@ -1061,14 +1073,14 @@ const App = {
 
             return `
                 <tr>
-                    <td><strong style="cursor: pointer; color: var(--primary);" onclick="App.openResellerDetailsModal('${r.id}')">${r.username} 🔍</strong></td>
+                    <td><strong style="cursor: pointer; color: var(--primary);" onclick="App.openResellerDetailsModal('${r.id}')">${escapeHtml(r.username)} 🔍</strong></td>
                     <td><span style="color:var(--success); font-weight:800; font-size:1.05rem">${creditsVal}</span> ج.م</td>
                     <td><span class="badge-status ${statusClass}">${statusText}</span></td>
                     <td>${new Date(r.created_at).toLocaleDateString('ar-EG')}</td>
                     <td class="text-end">
                         <div class="actions-cell">
-                            <button class="btn-reseller-action btn-add-credit" title="شحن الرصيد 💳" onclick="App.openChargeResellerModal('${r.id}', '${r.username}', ${creditsVal})"><i class="fa-solid fa-coins"></i></button>
-                            <button class="btn-reseller-action btn-pass" title="تعديل البيانات ✏️" onclick="App.startEditReseller('${r.id}', '${r.username}', ${creditsVal})"><i class="fa-solid fa-pen-to-square"></i></button>
+                            <button class="btn-reseller-action btn-add-credit" title="شحن الرصيد 💳" onclick="App.openChargeResellerModal('${r.id}', '${escapeHtml(r.username)}', ${creditsVal})"><i class="fa-solid fa-coins"></i></button>
+                            <button class="btn-reseller-action btn-pass" title="تعديل البيانات ✏️" onclick="App.startEditReseller('${r.id}', '${escapeHtml(r.username)}', ${creditsVal})"><i class="fa-solid fa-pen-to-square"></i></button>
                             <button class="btn-reseller-action btn-block" title="تغيير الحالة" onclick="App.toggleResellerStatus('${r.id}', '${r.status}')"><i class="fa-solid ${r.status === 'active' ? 'fa-toggle-on' : 'fa-toggle-off'}"></i></button>
                             <button class="btn-reseller-action btn-delete" title="حذف الحساب" onclick="App.deleteReseller('${r.id}')"><i class="fa-solid fa-trash"></i></button>
                         </div>
@@ -1094,10 +1106,10 @@ const App = {
                         `<tr><td colspan="7" class="text-center text-muted">لا توجد اشتراكات مفعّلة</td></tr>` :
                         data.subscriptions.map(s => `
                             <tr>
-                                <td>${s.xtream_panels?.name || '---'}</td>
-                                <td><code onclick="App.copyText('${s.line_username}')" style="cursor:pointer; color:var(--primary)">${s.line_username} 📋</code></td>
-                                <td><code>${s.line_password}</code></td>
-                                <td>${s.services?.service_name || '---'}</td>
+                                <td>${escapeHtml(s.xtream_panels?.name || '---')}</td>
+                                <td><code onclick="App.copyText('${escapeHtml(s.line_username)}')" style="cursor:pointer; color:var(--primary)">${escapeHtml(s.line_username)} 📋</code></td>
+                                <td><code>${escapeHtml(s.line_password)}</code></td>
+                                <td>${escapeHtml(s.services?.service_name || '---')}</td>
                                 <td><span style="color:var(--danger)">-${s.credits_deducted}</span></td>
                                 <td>${Utils.formatDisplayDate(s.expire_date)}</td>
                                 <td style="font-size:0.75rem">${new Date(s.created_at).toLocaleString('ar-EG')}</td>
@@ -1112,8 +1124,8 @@ const App = {
                         `<tr><td colspan="4" class="text-center text-muted">لا توجد أكواد مشتراة</td></tr>` :
                         data.purchased_codes.map(c => `
                             <tr>
-                                <td><strong>${c.code_categories?.name || '---'}</strong></td>
-                                <td><code onclick="App.copyText('${c.code}')" style="cursor:pointer; color:var(--primary)">${c.code} 📋</code></td>
+                                <td><strong>${escapeHtml(c.code_categories?.name || '---')}</strong></td>
+                                <td><code onclick="App.copyText('${escapeHtml(c.code)}')" style="cursor:pointer; color:var(--primary)">${escapeHtml(c.code)} 📋</code></td>
                                 <td><span style="font-weight:700; color:var(--warning)">${c.price}</span> ج.م</td>
                                 <td style="font-size:0.75rem">${c.sold_at ? new Date(c.sold_at).toLocaleString('ar-EG') : '---'}</td>
                             </tr>
@@ -1134,7 +1146,7 @@ const App = {
                                 <tr>
                                     <td><span class="badge-status" style="background:rgba(255,255,255,0.05); color:${color}">${t.action_type === 'deposit' ? 'شحن رصيد' : (t.action_type === 'refund' ? 'استرجاع رصيد' : 'سحب/شراء')}</span></td>
                                     <td><span style="font-weight:800; color:${color}">${amountText}</span></td>
-                                    <td>${t.description || '---'}</td>
+                                    <td>${escapeHtml(t.description || '---')}</td>
                                     <td style="font-size:0.75rem">${new Date(t.created_at).toLocaleString('ar-EG')}</td>
                                 </tr>
                             `;
@@ -1160,7 +1172,7 @@ const App = {
         list.innerHTML = this.state.services.map(s => `
             <tr>
                 <td><strong>${s.service_name}</strong></td>
-                <td><span class="badge-status active">${s.xtream_panels?.name || '---'}</span></td>
+                <td><span class="badge-status active">${escapeHtml(s.xtream_panels?.name || '---')}</span></td>
                 <td><code>${s.package_id}</code></td>
                 <td><span style="font-weight:700; color:var(--warning)">${s.cost_credits}</span> ج.م</td>
                 <td>
@@ -1181,10 +1193,10 @@ const App = {
             subList.innerHTML = this.state.logs.subscriptions.map(s => `
                 <tr>
                     <td><strong>${s.users?.username || '---'}</strong></td>
-                    <td>${s.xtream_panels?.name || '---'}</td>
-                    <td><code onclick="App.copyText('${s.line_username}')" style="cursor:pointer; color:var(--primary)">${s.line_username} 📋</code></td>
-                    <td><code>${s.line_password}</code></td>
-                    <td>${s.services?.service_name || '---'}</td>
+                    <td>${escapeHtml(s.xtream_panels?.name || '---')}</td>
+                    <td><code onclick="App.copyText('${escapeHtml(s.line_username)}')" style="cursor:pointer; color:var(--primary)">${escapeHtml(s.line_username)} 📋</code></td>
+                    <td><code>${escapeHtml(s.line_password)}</code></td>
+                    <td>${escapeHtml(s.services?.service_name || '---')}</td>
                     <td><span style="color:var(--danger)">-${s.credits_deducted}</span></td>
                     <td>${Utils.formatDisplayDate(s.expire_date)}</td>
                     <td style="font-size:0.75rem">${new Date(s.created_at).toLocaleString('ar-EG')}</td>
@@ -1204,7 +1216,7 @@ const App = {
                         <td><strong>${t.users?.username || '---'}</strong></td>
                         <td><span class="badge-status" style="background:rgba(255,255,255,0.05); color:${color}">${t.action_type === 'deposit' ? 'شحن رصيد' : (t.action_type === 'refund' ? 'استرجاع رصيد' : 'سحب/شراء')}</span></td>
                         <td><span style="font-weight:800; color:${color}">${amountText}</span></td>
-                        <td>${t.description || '---'}</td>
+                        <td>${escapeHtml(t.description || '---')}</td>
                         <td style="font-size:0.75rem">${new Date(t.created_at).toLocaleString('ar-EG')}</td>
                     </tr>
                 `;
@@ -1265,10 +1277,10 @@ const App = {
             return `
                 <tr>
                     <td><strong>${s.users?.username || s.reseller_id || '---'}</strong></td>
-                    <td><code onclick="App.copyText('${s.line_username}')" style="cursor:pointer; color:var(--primary)">${s.line_username} 📋</code></td>
-                    <td><code>${s.line_password}</code></td>
-                    <td>${s.xtream_panels?.name || '---'}</td>
-                    <td>${s.services?.service_name || '---'}</td>
+                    <td><code onclick="App.copyText('${escapeHtml(s.line_username)}')" style="cursor:pointer; color:var(--primary)">${escapeHtml(s.line_username)} 📋</code></td>
+                    <td><code>${escapeHtml(s.line_password)}</code></td>
+                    <td>${escapeHtml(s.xtream_panels?.name || '---')}</td>
+                    <td>${escapeHtml(s.services?.service_name || '---')}</td>
                     <td>${Utils.formatDisplayDate(s.expire_date)}</td>
                     <td>${daysBadge}</td>
                     <td><span class="badge-status ${statusClass}">${statusText}</span></td>
@@ -1461,7 +1473,7 @@ const App = {
         const select = document.getElementById('service-panel-id');
         if (!select) return;
         select.innerHTML = '<option value="">اختر السيرفر...</option>' + 
-            this.state.panels.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+            this.state.panels.map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('');
     },
 
     renderResellerServicesDropdown() {
@@ -1501,7 +1513,7 @@ const App = {
                 <div class="dashboard-section-card h-100 text-center d-flex flex-column justify-content-between" style="border-top: 3px solid var(--primary) !important;">
                     <div class="p-2">
                         <div class="mb-3" style="font-size: 2.5rem; color: var(--primary);"><i class="fa-solid fa-server"></i></div>
-                        <h4 class="font-weight-bold mb-2">${srv.name}</h4>
+                        <h4 class="font-weight-bold mb-2">${escapeHtml(srv.name)}</h4>
                         <div class="mb-3">
                             <span class="badge bg-secondary">${srv.services.length} Packages Available</span>
                         </div>
@@ -3061,7 +3073,7 @@ const App = {
         const select = document.getElementById('code-upload-category');
         if (!select) return;
         select.innerHTML = '<option value="">-- Choose Category --</option>' +
-            categories.map(c => `<option value="${c.id}">${c.name} (Cost: ${c.cost_credits} ج.م)</option>`).join('');
+            categories.map(c => `<option value="${c.id}">${escapeHtml(c.name)} (Cost: ${c.cost_credits} ج.م)</option>`).join('');
     },
 
     renderAdminCategoriesTable(categories) {
@@ -3071,7 +3083,7 @@ const App = {
         window._adminCategories = categories;
         tbody.innerHTML = categories.map((c, idx) => `
             <tr>
-                <td class="fw-bold">${c.name}</td>
+                <td class="fw-bold">${escapeHtml(c.name)}</td>
                 <td><span class="badge bg-primary" style="font-size:0.9rem">${parseFloat(c.cost_credits).toFixed(2)} ج.م</span></td>
                 <td><span class="badge ${c.available_count > 0 ? 'bg-success' : 'bg-danger'}" style="font-size:0.9rem; cursor:pointer;" onclick="App.viewCodesForCategory(${idx})">${c.available_count} متاح 👁</span></td>
                 <td class="text-end">
@@ -3129,7 +3141,7 @@ const App = {
                 return `
                 <tr>
                     <td class="text-muted">${i + 1}</td>
-                    <td><code style="font-size:0.82rem; word-break:break-all;">${code.code}</code></td>
+                    <td><code style="font-size:0.82rem; word-break:break-all;">${escapeHtml(code.code)}</code></td>
                     <td>${isSold ? '<span class="badge bg-danger">مباع</span>' : '<span class="badge bg-success">متاح</span>'}</td>
                     <td style="font-size:0.82rem; font-weight:600;">${isSold ? soldTo : '—'}</td>
                     <td>${isSold ? price : '—'}</td>
@@ -3312,7 +3324,7 @@ const App = {
                 <div class="dashboard-section-card h-100 text-center d-flex flex-column justify-content-between" style="border-top: 3px solid var(--primary) !important;">
                     <div class="p-3">
                         <div class="mb-3" style="font-size: 2.5rem; color: var(--primary);"><i class="fa-solid fa-ticket"></i></div>
-                        <h4 class="font-weight-bold mb-2">${c.name}</h4>
+                        <h4 class="font-weight-bold mb-2">${escapeHtml(c.name)}</h4>
                         <div class="mb-3">
                             <span class="badge bg-secondary me-2">السعر: ${parseFloat(c.cost_credits).toFixed(2)} ج.م</span>
                             <span class="badge ${c.available_count > 0 ? 'bg-success' : 'bg-danger'}">${c.available_count} In Stock</span>
