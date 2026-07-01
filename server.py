@@ -352,7 +352,7 @@ def get_reseller_data():
         credits = user_data[0]["credits"] if user_data else 0.0
 
         # Query subscriptions
-        subs_res = requests.get(f"{SB_URL}/rest/v1/subscriptions_log?sub_reseller_id=eq.{reseller_id}&select=*,services(service_name),xtream_panels(name)", headers=headers)
+        subs_res = requests.get(f"{SB_URL}/rest/v1/subscriptions_log?sub_reseller_id=eq.{reseller_id}&select=*,services(service_name),xtream_panels(id,name)", headers=headers)
         subs = subs_res.json() if subs_res.status_code == 200 else []
 
         return jsonify({
@@ -363,8 +363,10 @@ def get_reseller_data():
                 "id": s["id"],
                 "line_username": s["line_username"],
                 "line_password": s["line_password"],
+                "service_id": s.get("service_id"),
+                "panel_id": s.get("panel_id"),
                 "services": { "service_name": s.get("services", {}).get("service_name", "Unknown") } if s.get("services") else None,
-                "xtream_panels": { "name": s.get("xtream_panels", {}).get("name", "Server") } if s.get("xtream_panels") else None,
+                "xtream_panels": { "id": s.get("xtream_panels", {}).get("id"), "name": s.get("xtream_panels", {}).get("name", "Server") } if s.get("xtream_panels") else None,
                 "expire_date": s["expire_date"],
                 "status": s["status"],
                 "notes": s.get("notes", "")
@@ -413,7 +415,8 @@ def test_connection():
         else:
             return jsonify({"success": False, "error": f"فشل الاتصال بالخادم. رمز الحالة: {response.status_code}"}), 400
     except requests.exceptions.RequestException as e:
-        return jsonify({"success": False, "error": f"خطأ في الاتصال بالشبكة: {str(e)}"}), 500
+        print(f"[!] RequestException in test_connection: {str(e)}")
+        return jsonify({"success": False, "error": "خطأ في الاتصال بالشبكة: تعذر الوصول إلى السيرفر الرئيسي."}), 500
 
 
 # 3. Create Xtream Codes Line
@@ -757,7 +760,8 @@ def create_line():
             else:
                 error_msg = f"HTTP {xtream_res.status_code}"
         except Exception as e:
-            error_msg = str(e)
+            print(f"[!] Exception during standard api.php create_line: {str(e)}")
+            error_msg = "فشل الاتصال بالشبكة لتشغيل رابط الـ API."
 
         # Fallback to Playwright automation if standard API returned 404/Not Found
         if not is_success and ("404" in error_msg or "not found" in error_msg.lower() or "connection" in error_msg.lower() or "invalid" in error_msg.lower()):
@@ -1063,7 +1067,10 @@ def manage_status():
             else:
                 return jsonify({"success": False, "error": f"فشل السيرفر في تنفيذ العملية. كود HTTP: {xtream_res.status_code}"}), 400
         except requests.exceptions.RequestException as e:
-            return jsonify({"success": False, "error": f"خطأ في الاتصال باللوحة لتنفيذ العملية: {str(e)}"}), 504
+            print(f"[!] RequestException in manage_status (action={action}): {str(e)}")
+            action_map = {'enable': 'تفعيل', 'disable': 'تعطيل', 'delete': 'حذف'}
+            act_name = action_map.get(action, action)
+            return jsonify({"success": False, "error": f"فشل الاتصال بالسيرفر لتنفيذ عملية ({act_name}) بسبب مهلة الشبكة."}), 504
 
     except Exception as e:
         return jsonify({"success": False, "error": f"خطأ داخلي بالخادم: {str(e)}"}), 500
