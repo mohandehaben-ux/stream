@@ -389,7 +389,18 @@ def get_reseller_data():
 # 2. Test Connection to Xtream Codes Panel
 @app.route('/api/xtream/test-connection', methods=['POST'])
 def test_connection():
+    # Verify logged in
+    requester = get_verified_user()
+    if not requester:
+        return jsonify({"success": False, "error": "غير مصرح بالدخول"}), 401
     data = request.json
+    domain_url = data.get('domain_url', '').strip('/')
+    # SSRF Protection
+    import urllib.parse
+    parsed = urllib.parse.urlparse(domain_url)
+    host = parsed.hostname or ""
+    if any(host.startswith(pfx) for pfx in ["localhost", "127.", "10.", "192.168.", "172.16.", "169.254."]) or not host:
+        return jsonify({"success": False, "error": "غير مسموح بالوصول للنطاق الداخلي للشبكة."}), 400
     domain_url = data.get('domain_url', '').strip('/')
     if domain_url.endswith('/index.php'):
         domain_url = domain_url[:-10]
@@ -435,6 +446,13 @@ def create_line():
     import time, re
     data = request.json or {}
     reseller_id = data.get('reseller_id', '').strip()
+    
+    # Verify ownership
+    requester = get_verified_user()
+    if not requester:
+        return jsonify({"success": False, "error": "المستخدم غير مسجل بالخدمة أو موقوف"}), 401
+    if requester.get('role') != 'admin' and requester.get('id') != reseller_id:
+        return jsonify({"success": False, "error": "غير مصرح لك بتنفيذ هذه العملية لموزع آخر"}), 403
 
     # --- SECURITY: Rate Limiting ---
     if reseller_id and not check_rate_limit(reseller_id):
@@ -881,6 +899,13 @@ def create_line():
 def renew_line():
     data = request.json
     reseller_id = data.get('reseller_id')
+    
+    # Verify ownership
+    requester = get_verified_user()
+    if not requester:
+        return jsonify({"success": False, "error": "المستخدم غير مسجل بالخدمة أو موقوف"}), 401
+    if requester.get('role') != 'admin' and requester.get('id') != reseller_id:
+        return jsonify({"success": False, "error": "غير مصرح لك بتنفيذ هذه العملية لموزع آخر"}), 403
     subscription_id = data.get('subscription_id')
     service_id = int(data.get('service_id'))
     additional_days = int(data.get('additional_days', 30))
@@ -1020,6 +1045,13 @@ def renew_line():
 def manage_status():
     data = request.json
     reseller_id = data.get('reseller_id')
+    
+    # Verify ownership
+    requester = get_verified_user()
+    if not requester:
+        return jsonify({"success": False, "error": "المستخدم غير مسجل بالخدمة أو موقوف"}), 401
+    if requester.get('role') != 'admin' and requester.get('id') != reseller_id:
+        return jsonify({"success": False, "error": "غير مصرح لك بتنفيذ هذه العملية لموزع آخر"}), 403
     subscription_id = data.get('subscription_id')
     action = data.get('action') # 'enable', 'disable', 'delete'
 
@@ -1094,8 +1126,13 @@ def manage_status():
 
 @app.route('/api/codes/categories', methods=['GET', 'POST'])
 def handle_categories():
-    if not is_admin_request():
-        return jsonify({"success": False, "error": "غير مصرح بالدخول لغير المسؤول"}), 403
+    if request.method == 'POST':
+        if not is_admin_request():
+            return jsonify({"success": False, "error": "غير مصرح بالدخول لغير المسؤول"}), 403
+    else:
+        # GET method - allow any verified user
+        if not get_verified_user():
+            return jsonify({"success": False, "error": "غير مصرح بالدخول"}), 401
     import time
     if request.method == 'GET':
         if SB_KEY:
@@ -1245,6 +1282,8 @@ def delete_code_category():
 
 @app.route('/api/codes/list', methods=['GET'])
 def list_codes_by_category():
+    if not is_admin_request():
+        return jsonify({"success": False, "error": "غير مصرح بالدخول لغير المسؤول"}), 403
     category_id = request.args.get('category_id')
     if not category_id:
         return jsonify({"success": False, "error": "category_id مطلوب"}), 400
@@ -1435,6 +1474,13 @@ def upload_codes():
 def buy_code():
     data = request.json
     reseller_id = data.get('reseller_id')
+    
+    # Verify ownership
+    requester = get_verified_user()
+    if not requester:
+        return jsonify({"success": False, "error": "المستخدم غير مسجل بالخدمة أو موقوف"}), 401
+    if requester.get('role') != 'admin' and requester.get('id') != reseller_id:
+        return jsonify({"success": False, "error": "غير مصرح لك بتنفيذ هذه العملية لموزع آخر"}), 403
     category_id = data.get('category_id')
     if not reseller_id or not category_id:
         return jsonify({"success": False, "error": "reseller_id و category_id مطلوبة"}), 400
@@ -1550,7 +1596,14 @@ def buy_code():
 
 @app.route('/api/codes/history', methods=['GET'])
 def get_codes_history():
-    reseller_id = request.args.get('reseller_id')  # This is username (e.g. "medo2026")
+    requester = get_verified_user()
+    if not requester:
+        return jsonify({"success": False, "error": "المستخدم غير مسجل بالخدمة أو موقوف"}), 401
+    
+    reseller_id = request.args.get('reseller_id')
+    # If reseller, force history query to their own id
+    if requester.get('role') != 'admin':
+        reseller_id = requester.get('id')  # This is username (e.g. "medo2026")
     if SB_KEY:
         try:
             headers = get_supabase_headers()
