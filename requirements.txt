@@ -3,3 +3,4 @@ requests
 bcrypt
 gunicorn
 playwright
+flask-cors
